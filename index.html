@@ -1,0 +1,693 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Aegis Quantum — AI Multi-Agent Market Intelligence Platform</title>
+  <meta name="description" content="Real-time technical analysis, on-chain events, sentiment tracking, and alpha discovery across Perps, DEXs, CEXs, and Equities powered by AI agents.">
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+
+<!-- ===== TOAST CONTAINER ===== -->
+<div id="toast-container"></div>
+
+<!-- ===== TELEGRAM MODAL ===== -->
+<div class="modal-overlay" id="tg-modal">
+  <div class="modal-box">
+    <div class="modal-title">
+      <span>✈️</span> Telegram Alert Setup
+    </div>
+    <div class="modal-sub">Receive live alpha signals on Telegram — @yashbaing</div>
+
+    <div class="form-group">
+      <label class="form-label">Bot Token (from @BotFather)</label>
+      <input class="form-input" id="tg-bot-token" type="password" placeholder="e.g. 5521234:AAFsample...">
+    </div>
+    <div class="form-group">
+      <label class="form-label">Your Chat ID</label>
+      <input class="form-input" id="tg-chat-id" type="text" placeholder="e.g. 987654321">
+    </div>
+
+    <div class="toggle-row">
+      <div>
+        <div class="toggle-label">Enable Live Alerts</div>
+        <div class="toggle-desc">Push every new alpha opportunity to Telegram</div>
+      </div>
+      <label class="switch">
+        <input type="checkbox" id="tg-enable">
+        <span class="switch-slider"></span>
+      </label>
+    </div>
+
+    <div class="modal-actions">
+      <button class="btn-secondary" id="btn-tg-test">Send Test</button>
+      <button class="btn-primary" id="btn-tg-save">Save & Enable</button>
+    </div>
+    <button class="btn-secondary" style="width:100%;margin-top:0.5rem;" id="btn-tg-guide">
+      📖 Quick Setup Guide
+    </button>
+    <div class="setup-guide" id="tg-guide">
+      <p><strong>Step 1:</strong> Open Telegram → search <code>@BotFather</code> → send <code>/newbot</code> → copy your HTTP API token.</p>
+      <p style="margin-top:0.5rem"><strong>Step 2:</strong> Search <code>@userinfobot</code> → send <code>/start</code> → copy the <code>Id</code> number as your Chat ID.</p>
+      <p style="margin-top:0.5rem"><strong>Step 3:</strong> Start a chat with your new bot first (so it can message you), then paste credentials here and click "Save & Enable".</p>
+    </div>
+
+    <button onclick="document.getElementById('tg-modal').classList.remove('open')"
+      style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;">✕</button>
+  </div>
+</div>
+
+<div class="app-shell">
+
+  <!-- =========================================================
+       SIDEBAR
+  ========================================================= -->
+  <aside class="sidebar">
+    <div class="sidebar-logo">
+      <div class="logo-orb">Ω</div>
+      <div class="logo-copy">
+        <span class="logo-name">Aegis Quantum</span>
+        <span class="logo-tagline">AI Market Intelligence</span>
+      </div>
+    </div>
+
+    <div class="sidebar-search">
+      <input type="text" placeholder="Search assets…" id="asset-search" autocomplete="off">
+    </div>
+
+    <nav class="sidebar-nav" id="sidebar-nav">
+
+      <div class="nav-group-label">Perpetual Markets</div>
+      <ul class="asset-list" id="perps-list">
+        <li class="asset-item active" data-asset="BTC-PERP" data-type="perp">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:rgba(247,147,26,0.15);color:#f7931a;">₿</div>
+            <div class="asset-details">
+              <span class="asset-symbol">BTC-PERP</span>
+              <span class="asset-sub">Perpetual · dYdX</span>
+            </div>
+          </div>
+          <div class="asset-right">
+            <span class="asset-price-val price-up" id="price-BTC-PERP">$68,245</span>
+            <span class="asset-change price-up" id="chg-BTC-PERP">+1.25%</span>
+          </div>
+        </li>
+        <li class="asset-item" data-asset="ETH-PERP" data-type="perp">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:rgba(98,126,234,0.15);color:#627eea;">Ξ</div>
+            <div class="asset-details">
+              <span class="asset-symbol">ETH-PERP</span>
+              <span class="asset-sub">Perpetual · Hyperliquid</span>
+            </div>
+          </div>
+          <div class="asset-right">
+            <span class="asset-price-val price-down" id="price-ETH-PERP">$3,782</span>
+            <span class="asset-change price-down" id="chg-ETH-PERP">-0.85%</span>
+          </div>
+        </li>
+        <li class="asset-item" data-asset="SOL-PERP" data-type="perp">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:rgba(0,255,163,0.12);color:#00ffa3;">◎</div>
+            <div class="asset-details">
+              <span class="asset-symbol">SOL-PERP</span>
+              <span class="asset-sub">Perpetual · Drift</span>
+            </div>
+          </div>
+          <div class="asset-right">
+            <span class="asset-price-val price-up" id="price-SOL-PERP">$178.45</span>
+            <span class="asset-change price-up" id="chg-SOL-PERP">+3.42%</span>
+          </div>
+        </li>
+      </ul>
+
+      <div class="nav-group-label">DEX Pools</div>
+      <ul class="asset-list" id="dex-list">
+        <li class="asset-item" data-asset="USDC/WETH" data-type="dex">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:rgba(255,0,122,0.12);color:#ff007a;">🦄</div>
+            <div class="asset-details">
+              <span class="asset-symbol">WETH/USDC</span>
+              <span class="asset-sub">Uniswap v3 · 0.05%</span>
+            </div>
+          </div>
+          <div class="asset-right">
+            <span class="asset-price-val price-down" id="price-USDC-WETH">$3,784</span>
+            <span class="asset-change price-down" id="chg-USDC-WETH">-0.78%</span>
+          </div>
+        </li>
+        <li class="asset-item" data-asset="SOL/USDC" data-type="dex">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:rgba(0,255,163,0.12);color:#00ffa3;">⚡</div>
+            <div class="asset-details">
+              <span class="asset-symbol">SOL/USDC</span>
+              <span class="asset-sub">Raydium CLMM</span>
+            </div>
+          </div>
+          <div class="asset-right">
+            <span class="asset-price-val price-up" id="price-SOL-USDC">$178.52</span>
+            <span class="asset-change price-up" id="chg-SOL-USDC">+3.45%</span>
+          </div>
+        </li>
+      </ul>
+
+      <div class="nav-group-label">CEX Spot</div>
+      <ul class="asset-list" id="cex-list">
+        <li class="asset-item" data-asset="BTC/USD" data-type="cex">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:rgba(0,82,255,0.12);color:#0052ff;">₿</div>
+            <div class="asset-details">
+              <span class="asset-symbol">BTC/USD</span>
+              <span class="asset-sub">Coinbase Advanced</span>
+            </div>
+          </div>
+          <div class="asset-right">
+            <span class="asset-price-val price-up" id="price-BTC-USD">$68,235</span>
+            <span class="asset-change price-up" id="chg-BTC-USD">+1.22%</span>
+          </div>
+        </li>
+        <li class="asset-item" data-asset="ETH/USDT" data-type="cex">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:rgba(243,186,47,0.12);color:#f3ba2f;">Ξ</div>
+            <div class="asset-details">
+              <span class="asset-symbol">ETH/USDT</span>
+              <span class="asset-sub">Binance Spot</span>
+            </div>
+          </div>
+          <div class="asset-right">
+            <span class="asset-price-val price-down" id="price-ETH-USDT">$3,781</span>
+            <span class="asset-change price-down" id="chg-ETH-USDT">-0.88%</span>
+          </div>
+        </li>
+      </ul>
+
+      <div class="nav-group-label">Equities</div>
+      <ul class="asset-list" id="stocks-list">
+        <li class="asset-item" data-asset="TSLA" data-type="stock">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:rgba(204,0,0,0.12);color:#cc0000;">T</div>
+            <div class="asset-details">
+              <span class="asset-symbol">TSLA</span>
+              <span class="asset-sub">Tesla · Nasdaq</span>
+            </div>
+          </div>
+          <div class="asset-right">
+            <span class="asset-price-val price-up" id="price-TSLA">$184.20</span>
+            <span class="asset-change price-up" id="chg-TSLA">+1.48%</span>
+          </div>
+        </li>
+        <li class="asset-item" data-asset="NVDA" data-type="stock">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:rgba(118,185,0,0.12);color:#76b900;">N</div>
+            <div class="asset-details">
+              <span class="asset-symbol">NVDA</span>
+              <span class="asset-sub">Nvidia · Nasdaq</span>
+            </div>
+          </div>
+          <div class="asset-right">
+            <span class="asset-price-val price-up" id="price-NVDA">$1,120.50</span>
+            <span class="asset-change price-up" id="chg-NVDA">+4.12%</span>
+          </div>
+        </li>
+        <li class="asset-item" data-asset="AAPL" data-type="stock">
+          <div class="asset-left">
+            <div class="asset-icon" style="background:rgba(100,100,100,0.15);color:#aaa;">🍎</div>
+            <div class="asset-details">
+              <span class="asset-symbol">AAPL</span>
+              <span class="asset-sub">Apple · Nasdaq</span>
+            </div>
+          </div>
+          <div class="asset-right">
+            <span class="asset-price-val price-down" id="price-AAPL">$196.75</span>
+            <span class="asset-change price-down" id="chg-AAPL">-0.63%</span>
+          </div>
+        </li>
+      </ul>
+    </nav>
+
+    <!-- Sidebar Footer -->
+    <div class="sidebar-footer">
+      <div class="tg-status-pill off" id="tg-sidebar-pill" onclick="document.getElementById('tg-modal').classList.add('open')">
+        <span>✈️</span>
+        <span id="tg-pill-label">Telegram Off</span>
+      </div>
+      <div class="icon-btn" title="Settings" onclick="document.getElementById('tg-modal').classList.add('open')">⚙</div>
+    </div>
+  </aside>
+
+  <!-- =========================================================
+       TOP BAR
+  ========================================================= -->
+  <header class="topbar">
+    <!-- Active Asset Hero -->
+    <div class="asset-hero">
+      <div class="asset-hero-icon" id="hero-icon" style="background:rgba(247,147,26,0.15);color:#f7931a;font-size:1rem;font-weight:800;">₿</div>
+      <div>
+        <div style="display:flex;align-items:center;gap:0.5rem;">
+          <span class="asset-hero-name" id="hero-name">BTC-PERP</span>
+          <span id="hero-badge" style="font-size:0.62rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:4px;background:rgba(217,70,239,0.12);color:#d946ef;border:1px solid rgba(217,70,239,0.25);text-transform:uppercase;">Perp</span>
+        </div>
+        <div class="asset-hero-type" id="hero-type">Perpetual · dYdX</div>
+      </div>
+      <div style="margin-left:0.75rem;">
+        <div class="asset-hero-price" id="hero-price">$68,245.50</div>
+        <div class="asset-hero-change price-up" id="hero-change">+1.25%</div>
+      </div>
+    </div>
+
+    <!-- Global Market Stats -->
+    <div class="topbar-stats">
+      <div class="topbar-stat">
+        <span class="ts-label">24h Volume</span>
+        <span class="ts-value" id="tb-vol">$14.28B</span>
+      </div>
+      <div class="topbar-stat">
+        <span class="ts-label">Alpha Signals</span>
+        <span class="ts-value text-cyan" id="tb-alpha">28 Active</span>
+      </div>
+      <div class="topbar-stat">
+        <span class="ts-label">Agents Online</span>
+        <span class="ts-value" id="tb-agents">4 / 4</span>
+      </div>
+      <div class="topbar-stat">
+        <span class="ts-label">Market Mood</span>
+        <span class="ts-value" id="tb-mood" style="color:var(--emerald)">Bullish 78%</span>
+      </div>
+      <div class="topbar-stat">
+        <span class="ts-label">Fear &amp; Greed</span>
+        <span class="ts-value" id="tb-fear" style="color:var(--amber)">Greed 65</span>
+      </div>
+    </div>
+
+    <!-- Right Controls -->
+    <div class="topbar-right">
+      <div class="live-badge">
+        <div class="status-dot" style="width:6px;height:6px;background:var(--emerald);border-radius:50%;box-shadow:0 0 6px var(--emerald);animation:pulse 1.5s infinite alternate;"></div>
+        LIVE
+      </div>
+      <div class="icon-btn" id="btn-pause-agents" title="Pause / Resume all agents">⏸</div>
+      <div class="icon-btn" title="Telegram Alerts" onclick="document.getElementById('tg-modal').classList.add('open')">
+        ✈️
+        <div class="badge-dot" id="tg-topbar-dot" style="display:none;"></div>
+      </div>
+    </div>
+  </header>
+
+  <!-- =========================================================
+       MAIN WORKSPACE
+  ========================================================= -->
+  <main class="workspace">
+
+    <!-- ── ROW 1 : Chart + Agents ───────────────────────────── -->
+    <div class="ws-row ws-row-chart">
+
+      <!-- Interactive Price Chart Card -->
+      <div class="card accent-cyan card-glow-cyan">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-title-icon" style="background:var(--cyan-dim);color:var(--cyan);">📊</div>
+            <span id="chart-card-title">BTC-PERP — Price Action</span>
+          </div>
+          <div class="card-actions">
+            <!-- Timeframes -->
+            <button class="pill-btn active timeframe-btn" data-tf="15m">15m</button>
+            <button class="pill-btn timeframe-btn" data-tf="1h">1H</button>
+            <button class="pill-btn timeframe-btn" data-tf="4h">4H</button>
+            <button class="pill-btn timeframe-btn" data-tf="1d">1D</button>
+            <div class="vr"></div>
+            <!-- Indicators -->
+            <button class="pill-btn active ind-btn" data-ind="ma" title="Moving Averages">MA</button>
+            <button class="pill-btn active ind-btn" data-ind="bb" title="Bollinger Bands">BB</button>
+            <button class="pill-btn active ind-btn" data-ind="rsi" title="RSI (14)">RSI</button>
+            <button class="pill-btn active ind-btn" data-ind="macd" title="MACD">MACD</button>
+            <button class="pill-btn ind-btn" data-ind="vol" title="Volume Bars">VOL</button>
+          </div>
+        </div>
+
+        <!-- OHLCV info strip -->
+        <div class="chart-info-bar">
+          <div class="cib-item"><span class="cib-label">Open</span><span class="cib-value" id="cib-open">—</span></div>
+          <div class="cib-item"><span class="cib-label">High</span><span class="cib-value price-up" id="cib-high">—</span></div>
+          <div class="cib-item"><span class="cib-label">Low</span><span class="cib-value price-down" id="cib-low">—</span></div>
+          <div class="cib-item"><span class="cib-label">Close</span><span class="cib-value" id="cib-close">—</span></div>
+          <div class="cib-item"><span class="cib-label">Volume</span><span class="cib-value text-muted" id="cib-vol">—</span></div>
+          <div class="vr"></div>
+          <div class="cib-item"><span class="cib-label">MA 20</span><span class="cib-value" id="cib-ma20" style="color:var(--magenta)">—</span></div>
+          <div class="cib-item"><span class="cib-label">RSI 14</span><span class="cib-value" id="cib-rsi" style="color:var(--amber)">—</span></div>
+          <div class="cib-item"><span class="cib-label">MACD</span><span class="cib-value" id="cib-macd" style="color:var(--cyan)">—</span></div>
+        </div>
+
+        <!-- Canvas -->
+        <div class="chart-canvas-wrap" id="chart-canvas-wrap">
+          <canvas id="price-chart"></canvas>
+          <div id="chart-tooltip">
+            <div class="tt-price" id="tt-price">$0</div>
+            <div class="tt-row"><span>O</span><span id="tt-o">—</span></div>
+            <div class="tt-row"><span>H</span><span id="tt-h">—</span></div>
+            <div class="tt-row"><span>L</span><span id="tt-l">—</span></div>
+            <div class="tt-row"><span>C</span><span id="tt-c">—</span></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- AI Agents Panel -->
+      <div class="card accent-magenta card-glow-magenta" style="overflow:hidden;">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-title-icon" style="background:var(--magenta-dim);color:var(--magenta);">🤖</div>
+            AI Analytical Agents
+          </div>
+          <div class="card-actions">
+            <button class="pill-btn active" id="btn-agents-toggle">Pause All</button>
+          </div>
+        </div>
+
+        <!-- Agent cards -->
+        <div class="agents-list" id="agents-list">
+          <div class="agent-card active" data-agent="aegis">
+            <div class="ac-header">
+              <div class="ac-meta">
+                <div class="ac-icon" style="background:var(--cyan-dim);color:var(--cyan);">Ω</div>
+                <span class="ac-name">Aegis — Technical</span>
+              </div>
+              <span class="ac-status on" id="status-aegis"><span style="width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;"></span> Active</span>
+            </div>
+            <div class="ac-desc">Real-time overlays: SMA/EMA, Bollinger Bands, RSI divergences, MACD crossovers</div>
+            <div class="ac-metrics">
+              <div class="ac-metric"><span class="ac-metric-label">Confidence</span><span class="ac-metric-value text-cyan" id="conf-aegis">84%</span></div>
+              <div class="ac-metric"><span class="ac-metric-label">Calc/sec</span><span class="ac-metric-value">12.4k</span></div>
+              <div class="ac-metric"><span class="ac-metric-label">Signals</span><span class="ac-metric-value" id="sigs-aegis">0</span></div>
+            </div>
+            <div class="confidence-bar-wrap">
+              <div class="confidence-bar-track"><div class="confidence-bar-fill" id="bar-aegis" style="width:84%;"></div></div>
+            </div>
+          </div>
+
+          <div class="agent-card" data-agent="sentinel">
+            <div class="ac-header">
+              <div class="ac-meta">
+                <div class="ac-icon" style="background:var(--emerald-dim);color:var(--emerald);">⛓</div>
+                <span class="ac-name">ChainSentinel — On-Chain</span>
+              </div>
+              <span class="ac-status on" id="status-sentinel"><span style="width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;"></span> Active</span>
+            </div>
+            <div class="ac-desc">DEX pool depth, whale flows, MEV sandwiches, LP mints/burns, gas analytics</div>
+            <div class="ac-metrics">
+              <div class="ac-metric"><span class="ac-metric-label">Confidence</span><span class="ac-metric-value price-up" id="conf-sentinel">79%</span></div>
+              <div class="ac-metric"><span class="ac-metric-label">Gas/blk</span><span class="ac-metric-value">4.2G</span></div>
+              <div class="ac-metric"><span class="ac-metric-label">Signals</span><span class="ac-metric-value" id="sigs-sentinel">0</span></div>
+            </div>
+            <div class="confidence-bar-wrap">
+              <div class="confidence-bar-track"><div class="confidence-bar-fill" id="bar-sentinel" style="width:79%;background:linear-gradient(90deg,var(--emerald),var(--cyan))"></div></div>
+            </div>
+          </div>
+
+          <div class="agent-card" data-agent="vox">
+            <div class="ac-header">
+              <div class="ac-meta">
+                <div class="ac-icon" style="background:var(--magenta-dim);color:var(--magenta);">🎤</div>
+                <span class="ac-name">VoxPopulist — Sentiment</span>
+              </div>
+              <span class="ac-status on" id="status-vox"><span style="width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;"></span> Active</span>
+            </div>
+            <div class="ac-desc">Social media NLP, X/Reddit/News scraping, fear & greed index tracking</div>
+            <div class="ac-metrics">
+              <div class="ac-metric"><span class="ac-metric-label">Confidence</span><span class="ac-metric-value" id="conf-vox" style="color:var(--magenta)">72%</span></div>
+              <div class="ac-metric"><span class="ac-metric-label">Posts/min</span><span class="ac-metric-value">18.5k</span></div>
+              <div class="ac-metric"><span class="ac-metric-label">Signals</span><span class="ac-metric-value" id="sigs-vox">0</span></div>
+            </div>
+            <div class="confidence-bar-wrap">
+              <div class="confidence-bar-track"><div class="confidence-bar-fill" id="bar-vox" style="width:72%;background:linear-gradient(90deg,var(--magenta),var(--violet))"></div></div>
+            </div>
+          </div>
+
+          <div class="agent-card" data-agent="predictor">
+            <div class="ac-header">
+              <div class="ac-meta">
+                <div class="ac-icon" style="background:var(--amber-dim);color:var(--amber);">🔮</div>
+                <span class="ac-name">PredictorX — Forecast</span>
+              </div>
+              <span class="ac-status on" id="status-predictor"><span style="width:5px;height:5px;border-radius:50%;background:currentColor;display:inline-block;"></span> Active</span>
+            </div>
+            <div class="ac-desc">Synthesises all agent signals for multi-timeframe probabilistic forecasts</div>
+            <div class="ac-metrics">
+              <div class="ac-metric"><span class="ac-metric-label">Confidence</span><span class="ac-metric-value" id="conf-predictor" style="color:var(--amber)">89%</span></div>
+              <div class="ac-metric"><span class="ac-metric-label">Projections</span><span class="ac-metric-value">512</span></div>
+              <div class="ac-metric"><span class="ac-metric-label">Signals</span><span class="ac-metric-value" id="sigs-predictor">0</span></div>
+            </div>
+            <div class="confidence-bar-wrap">
+              <div class="confidence-bar-track"><div class="confidence-bar-fill" id="bar-predictor" style="width:89%;background:linear-gradient(90deg,var(--amber),var(--emerald))"></div></div>
+            </div>
+          </div>
+        </div>
+
+        <!-- Terminal -->
+        <div class="terminal-wrap">
+          <div class="terminal-toolbar">
+            <span class="terminal-name">Console · <span id="active-agent-label">AEGIS</span></span>
+            <div class="terminal-actions">
+              <div class="terminal-dot td-red" title="Close terminal" onclick="document.getElementById('terminal-screen').innerHTML=''" ></div>
+              <div class="terminal-dot td-amber" title="Minimize"></div>
+              <div class="terminal-dot td-green" title="Clear" onclick="document.getElementById('terminal-screen').innerHTML=''"></div>
+            </div>
+          </div>
+          <div class="terminal-screen" id="terminal-screen">
+            <div class="t-line">
+              <span class="t-time">[init]</span>
+              <span class="t-agent aegis">AEGIS</span>
+              <span class="t-msg">Platform initialized. Agents online and computing real-time overlays.</span>
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ROW 2 : Orderbook / Trades + Alpha Terminal ───────── -->
+    <div class="ws-row ws-row-middle">
+
+      <!-- Orderbook / DEX Trades -->
+      <div class="card accent-cyan">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-title-icon" style="background:var(--cyan-dim);color:var(--cyan);">⚡</div>
+            <span id="ob-card-title">Order Book</span>
+          </div>
+          <div class="card-actions">
+            <button class="pill-btn active" id="btn-ob-cex">CEX Depth</button>
+            <button class="pill-btn" id="btn-ob-dex">DEX Trades</button>
+          </div>
+        </div>
+
+        <!-- CEX Orderbook -->
+        <div id="cex-ob-panel" style="display:flex;flex-direction:column;flex:1;overflow:hidden;">
+          <div class="orderbook-wrap">
+            <div class="ob-header">
+              <span>Price (USD)</span><span>Size</span><span>Total</span>
+            </div>
+            <div class="ob-asks" id="ob-asks" style="flex:1;overflow:hidden;"></div>
+            <div class="ob-spread" id="ob-spread">
+              <span class="ob-mid-price" id="ob-mid">$68,245.50</span>
+              Spread: $0.50 · 0.001%
+            </div>
+            <div class="ob-bids" id="ob-bids" style="flex:1;overflow:hidden;"></div>
+          </div>
+        </div>
+
+        <!-- DEX Trades Stream -->
+        <div id="dex-ob-panel" style="display:none;flex-direction:column;flex:1;overflow:hidden;">
+          <div class="ob-header" style="padding:0.5rem 0.875rem;">
+            <span>Time</span><span>Type</span><span>Amount</span><span>Price</span>
+          </div>
+          <div class="dex-stream" id="dex-trades-stream"></div>
+        </div>
+      </div>
+
+      <!-- Alpha Opportunity Terminal -->
+      <div class="card accent-emerald card-glow-emerald">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-title-icon" style="background:var(--emerald-dim);color:var(--emerald);">🎯</div>
+            Alpha Opportunity Terminal
+            <span id="alpha-count-badge" style="font-size:0.62rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:var(--r-pill);background:var(--emerald-dim);color:var(--emerald);border:1px solid rgba(16,185,129,0.25);margin-left:0.25rem;">0</span>
+          </div>
+          <div class="card-actions">
+            <button class="pill-btn active" id="f-all">All</button>
+            <button class="pill-btn emerald" id="f-buy">Buy</button>
+            <button class="pill-btn" id="f-sell">Sell</button>
+            <div class="vr"></div>
+            <button class="pill-btn" id="btn-tg-config-opp" style="border-color:var(--magenta);color:var(--magenta);">✈️ Alerts</button>
+          </div>
+        </div>
+
+        <div class="opp-wrap" id="opp-wrap">
+          <table class="opp-table">
+            <thead>
+              <tr>
+                <th>Time</th>
+                <th>Asset</th>
+                <th>Signal</th>
+                <th>Target</th>
+                <th>Stop</th>
+                <th>Conf.</th>
+                <th style="min-width:200px;">Rationale</th>
+              </tr>
+            </thead>
+            <tbody id="opp-tbody"></tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── ROW 3 : Sentiment + PredictorX Chat ──────────────── -->
+    <div class="ws-row ws-row-bottom">
+
+      <!-- Sentiment Engine -->
+      <div class="card accent-magenta card-glow-magenta">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-title-icon" style="background:var(--magenta-dim);color:var(--magenta);">🗣️</div>
+            Vox Sentiment Monitor
+          </div>
+          <div class="card-actions">
+            <span style="font-size:0.65rem;color:var(--text-muted);" id="sentiment-sync-time">Synced just now</span>
+          </div>
+        </div>
+
+        <div class="sentiment-body">
+          <!-- Main gauge -->
+          <div class="s-gauge-wrap">
+            <div class="s-gauge-header">
+              <span class="s-gauge-title">Overall Market Sentiment</span>
+              <span class="s-gauge-value" id="sentiment-pct-label" style="color:var(--emerald)">78% Bullish</span>
+            </div>
+            <div class="s-gauge-bar">
+              <div class="s-gauge-needle" id="sentiment-needle" style="left:78%;"></div>
+            </div>
+            <div class="s-gauge-labels">
+              <span style="color:var(--red)">Extreme Fear</span>
+              <span>Neutral</span>
+              <span style="color:var(--emerald)">Extreme Greed</span>
+            </div>
+          </div>
+
+          <!-- Source breakdown -->
+          <div class="s-sources-grid">
+            <div class="s-source-card">
+              <span class="s-source-name">X / Twitter</span>
+              <span class="s-source-score price-up" id="src-twitter">+74</span>
+              <span class="s-source-change price-up">▲ 3.2% vs 1h</span>
+            </div>
+            <div class="s-source-card">
+              <span class="s-source-name">Reddit</span>
+              <span class="s-source-score price-up" id="src-reddit">+61</span>
+              <span class="s-source-change price-up">▲ 1.5% vs 1h</span>
+            </div>
+            <div class="s-source-card">
+              <span class="s-source-name">News NLP</span>
+              <span class="s-source-score price-down" id="src-news">-12</span>
+              <span class="s-source-change price-down">▼ 5.8% vs 1h</span>
+            </div>
+            <div class="s-source-card">
+              <span class="s-source-name">On-Chain Flow</span>
+              <span class="s-source-score price-up" id="src-chain">+43</span>
+              <span class="s-source-change price-up">▲ 2.1% vs 1h</span>
+            </div>
+          </div>
+
+          <!-- Hot keywords -->
+          <div>
+            <div style="font-size:0.68rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;">Hot Keywords</div>
+            <div class="s-keywords" id="s-keywords">
+              <span class="s-kw pos">▲ #BTCETFFlows +8.4%</span>
+              <span class="s-kw neg">▼ #LiquidationCrash -12.5%</span>
+              <span class="s-kw pos">▲ #SOLPump +14.2%</span>
+              <span class="s-kw pos">▲ #EtherShanghai +3.1%</span>
+              <span class="s-kw neg">▼ #FundingSpike -5.8%</span>
+            </div>
+          </div>
+
+          <!-- Live news feed -->
+          <div style="flex:1;overflow:hidden;display:flex;flex-direction:column;">
+            <div style="font-size:0.68rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;margin-bottom:0.4rem;">Live Signal Feed</div>
+            <div class="news-feed" id="news-feed"></div>
+          </div>
+        </div>
+      </div>
+
+      <!-- PredictorX Forecast Chat -->
+      <div class="card accent-amber card-glow-amber">
+        <div class="card-header">
+          <div class="card-title">
+            <div class="card-title-icon" style="background:var(--amber-dim);color:var(--amber);">🔮</div>
+            PredictorX — Forecast Terminal
+          </div>
+          <div class="card-actions">
+            <button class="pill-btn" id="btn-clear-chat">Clear</button>
+          </div>
+        </div>
+
+        <div class="chat-body">
+          <div class="chat-messages" id="chat-messages">
+            <div class="msg agent">
+              <div class="msg-bubble">
+                👋 I'm <strong>PredictorX</strong>. Select an asset from the sidebar, then ask me for a forecast, technical analysis, on-chain evaluation, or risk assessment.
+                <div style="margin-top:0.5rem;font-size:0.68rem;color:var(--text-muted);">Powered by live indicator data • RSI • MACD • BB • SMA</div>
+              </div>
+              <span class="msg-meta">PredictorX · just now</span>
+            </div>
+          </div>
+
+          <!-- Quick prompt chips -->
+          <div class="chat-quick-prompts">
+            <button class="quick-prompt-btn" data-q="Forecast price movement for the next 24 hours">📈 24h Forecast</button>
+            <button class="quick-prompt-btn" data-q="Identify key support and resistance levels">🎯 Support &amp; Resistance</button>
+            <button class="quick-prompt-btn" data-q="Analyze on-chain liquidity and whale movements">🐋 Whale Analysis</button>
+            <button class="quick-prompt-btn" data-q="What is the current risk level for a long position?">⚠️ Risk Assessment</button>
+            <button class="quick-prompt-btn" data-q="Is this a good entry point based on momentum indicators?">✅ Entry Signal</button>
+          </div>
+
+          <div class="chat-input-row">
+            <input type="text" class="chat-input" id="chat-input" placeholder="Ask PredictorX anything about the selected asset…">
+            <button class="chat-send-btn" id="chat-send">Analyze →</button>
+          </div>
+        </div>
+      </div>
+    </div>
+
+    <!-- ── FOOTER PERPS STATS BAR ───────────────────────────── -->
+    <div class="footer-bar" id="footer-bar">
+      <div class="footer-stats">
+        <div class="fs-item">
+          <span class="fs-label">Selected Market</span>
+          <span class="fs-value text-cyan" id="fs-market">BTC-PERP</span>
+        </div>
+        <div class="fs-item">
+          <span class="fs-label">8h Funding Rate</span>
+          <span class="fs-value price-up" id="fs-funding">+0.0150%</span>
+        </div>
+        <div class="fs-item">
+          <span class="fs-label">Open Interest</span>
+          <span class="fs-value" id="fs-oi">$482.4M</span>
+        </div>
+        <div class="fs-item">
+          <span class="fs-label">24h Liquidations</span>
+          <span class="fs-value price-down" id="fs-liq">$12.4M Longs</span>
+        </div>
+        <div class="fs-item">
+          <span class="fs-label">Long/Short Ratio</span>
+          <span class="fs-value" id="fs-ls">58% / 42%</span>
+        </div>
+      </div>
+      <div style="display:flex;align-items:center;gap:0.75rem;">
+        <span style="font-size:0.68rem;color:var(--text-muted);">Agent Consensus:</span>
+        <span class="action-badge ab-buy" id="fs-consensus">Strong Buy</span>
+      </div>
+    </div>
+
+  </main>
+
+</div>
+
+<script src="app.js"></script>
+</body>
+</html>

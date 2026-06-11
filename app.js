@@ -1,0 +1,1475 @@
+/**
+ * Aegis Quantum — AI Multi-Agent Market Intelligence Platform
+ * Fully overhauled application engine v2.0
+ */
+
+// ============================================================
+// STATE
+// ============================================================
+const STATE = {
+  activeAsset: 'BTC-PERP',
+  activeAssetType: 'perp',
+  activeTimeframe: '15m',
+  activeAgent: 'aegis',
+  agentsRunning: true,
+  marketView: 'cex',       // 'cex' | 'dex'
+  oppFilter: 'all',         // 'all' | 'buy' | 'sell'
+  indicators: { ma: true, bb: true, rsi: true, macd: true, vol: false },
+  opportunities: [],
+  agentLogs: { aegis: [], sentinel: [], vox: [], predictor: [] },
+  agentSignalCount: { aegis: 0, sentinel: 0, vox: 0, predictor: 0 },
+  dexTrades: [],
+  newsFeed: [],
+  sentimentIndex: 78,
+  fearGreed: 65,
+
+  assets: {
+    'BTC-PERP': { symbol:'BTC-PERP', display:'₿', type:'perp',  basePrice:68000,  currentPrice:68245.50, change:1.25, fundingRate:0.0150, oi:482.4, liq:12.4, lsRatio:[58,42], dec:2, history:[] },
+    'ETH-PERP': { symbol:'ETH-PERP', display:'Ξ', type:'perp',  basePrice:3800,   currentPrice:3782.10,  change:-0.85,fundingRate:0.0085, oi:215.1, liq:4.8,  lsRatio:[52,48], dec:2, history:[] },
+    'SOL-PERP': { symbol:'SOL-PERP', display:'◎', type:'perp',  basePrice:175,    currentPrice:178.45,   change:3.42, fundingRate:0.0450, oi:84.15, liq:1.9,  lsRatio:[64,36], dec:2, history:[] },
+    'USDC/WETH':{ symbol:'USDC/WETH',display:'🦄', type:'dex',   basePrice:3800,   currentPrice:3784.95,  change:-0.78,tvl:45.2,  vol24h:18.4, dex:'Uniswap v3', dec:2, history:[] },
+    'SOL/USDC': { symbol:'SOL/USDC', display:'⚡', type:'dex',   basePrice:175,    currentPrice:178.52,   change:3.45, tvl:12.8,  vol24h:5.1,  dex:'Raydium',   dec:2, history:[] },
+    'BTC/USD':  { symbol:'BTC/USD',  display:'₿', type:'cex',   basePrice:68000,  currentPrice:68235.00, change:1.22, exchange:'Coinbase', spread:0.50, vol24h:124.5, dec:2, history:[] },
+    'ETH/USDT': { symbol:'ETH/USDT', display:'Ξ', type:'cex',   basePrice:3800,   currentPrice:3781.50,  change:-0.88,exchange:'Binance',  spread:0.10, vol24h:215.8, dec:2, history:[] },
+    'TSLA':     { symbol:'TSLA',     display:'T', type:'stock', basePrice:182,    currentPrice:184.20,   change:1.48, marketCap:588.2, vol24h:88.5, dec:2, history:[] },
+    'NVDA':     { symbol:'NVDA',     display:'N', type:'stock', basePrice:1100,   currentPrice:1120.50,  change:4.12, marketCap:2750,  vol24h:142.4, dec:2, history:[] },
+    'AAPL':     { symbol:'AAPL',     display:'🍎',type:'stock', basePrice:198,    currentPrice:196.75,   change:-0.63,marketCap:3010,  vol24h:52.8,  dec:2, history:[] },
+  }
+};
+
+// ============================================================
+// MATH / INDICATOR LIBRARY
+// ============================================================
+function calcSMA(data, p) {
+  return data.map((_, i) => {
+    if (i < p - 1) return null;
+    return data.slice(i - p + 1, i + 1).reduce((s, d) => s + d.close, 0) / p;
+  });
+}
+
+function calcEMA(data, p) {
+  const k = 2 / (p + 1);
+  const ema = [data[0].close];
+  for (let i = 1; i < data.length; i++) {
+    ema.push(data[i].close * k + ema[i - 1] * (1 - k));
+  }
+  return ema;
+}
+
+function calcRSI(data, p = 14) {
+  const rsi = Array(data.length).fill(null);
+  if (data.length <= p) return rsi;
+
+  let gains = 0, losses = 0;
+  for (let i = 1; i <= p; i++) {
+    const d = data[i].close - data[i - 1].close;
+    if (d >= 0) gains += d; else losses -= d;
+  }
+  let ag = gains / p, al = losses / p;
+  rsi[p] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+
+  for (let i = p + 1; i < data.length; i++) {
+    const d = data[i].close - data[i - 1].close;
+    ag = (ag * (p - 1) + (d > 0 ? d : 0)) / p;
+    al = (al * (p - 1) + (d < 0 ? -d : 0)) / p;
+    rsi[i] = al === 0 ? 100 : 100 - 100 / (1 + ag / al);
+  }
+  return rsi;
+}
+
+function calcBB(data, p = 20, mult = 2) {
+  const mid = calcSMA(data, p);
+  const upper = [], lower = [];
+  for (let i = 0; i < data.length; i++) {
+    if (mid[i] === null) { upper.push(null); lower.push(null); continue; }
+    const sq = data.slice(i - p + 1, i + 1).reduce((s, d) => s + (d.close - mid[i]) ** 2, 0);
+    const sd = Math.sqrt(sq / p);
+    upper.push(mid[i] + mult * sd);
+    lower.push(mid[i] - mult * sd);
+  }
+  return { upper, mid, lower };
+}
+
+function calcMACD(data, s = 12, l = 26, sig = 9) {
+  const emaS = calcEMA(data, s);
+  const emaL = calcEMA(data, l);
+  const line = emaS.map((v, i) => v - emaL[i]);
+
+  const signalArr = [line[0]];
+  const k = 2 / (sig + 1);
+  for (let i = 1; i < line.length; i++) {
+    signalArr.push(line[i] * k + signalArr[i - 1] * (1 - k));
+  }
+  const hist = line.map((v, i) => v - signalArr[i]);
+  return { line, signal: signalArr, hist };
+}
+
+// ============================================================
+// HISTORICAL DATA GENERATOR
+// ============================================================
+function buildHistory(asset) {
+  const n = 150;
+  let price = asset.basePrice;
+  const now = Date.now();
+  const bars = [];
+  for (let i = n; i >= 0; i--) {
+    const drift = (Math.random() - 0.488) * 0.018;
+    const open = price;
+    const close = price * (1 + drift);
+    const high = Math.max(open, close) * (1 + Math.random() * 0.006);
+    const low  = Math.min(open, close) * (1 - Math.random() * 0.006);
+    const vol  = Math.round(40000 + Math.random() * 800000);
+    bars.push({
+      time: new Date(now - i * 15 * 60 * 1000),
+      open: +open.toFixed(asset.dec),
+      high: +high.toFixed(asset.dec),
+      low:  +low.toFixed(asset.dec),
+      close: +close.toFixed(asset.dec),
+      vol
+    });
+    price = close;
+  }
+  asset.currentPrice = +price.toFixed(asset.dec);
+  asset.history = bars;
+}
+
+Object.values(STATE.assets).forEach(buildHistory);
+
+// ============================================================
+// CANVAS CHART RENDERER (full OHLCV + indicators + crosshair)
+// ============================================================
+const canvas = document.getElementById('price-chart');
+const ctx    = canvas.getContext('2d');
+const tooltip = document.getElementById('chart-tooltip');
+
+let hoverIdx = -1;
+
+function resizeCanvas() {
+  const wrap = document.getElementById('chart-canvas-wrap');
+  const dpr  = window.devicePixelRatio || 1;
+  const w = wrap.clientWidth, h = wrap.clientHeight;
+  canvas.width  = w * dpr;
+  canvas.height = h * dpr;
+  canvas.style.width  = w + 'px';
+  canvas.style.height = h + 'px';
+  ctx.scale(dpr, dpr);
+}
+
+canvas.addEventListener('mousemove', e => {
+  const rect = canvas.getBoundingClientRect();
+  const mx = e.clientX - rect.left;
+  const my = e.clientY - rect.top;
+  const asset = STATE.assets[STATE.activeAsset];
+  if (!asset || !asset.history.length) return;
+
+  const n = asset.history.length;
+  const chartW = canvas.width / (window.devicePixelRatio||1) - RIGHT_PAD;
+  const step = chartW / n;
+  const idx = Math.min(n - 1, Math.max(0, Math.floor(mx / step)));
+  hoverIdx = idx;
+
+  const bar = asset.history[idx];
+  if (!bar) return;
+
+  // Show OHLCV tooltip
+  tooltip.style.display = 'block';
+  const ttX = mx > chartW * 0.65 ? mx - 160 : mx + 12;
+  const ttY = Math.max(0, my - 60);
+  tooltip.style.left = ttX + 'px';
+  tooltip.style.top  = ttY + 'px';
+
+  const isUp = bar.close >= bar.open;
+  document.getElementById('tt-price').textContent = '$' + bar.close.toLocaleString();
+  document.getElementById('tt-price').style.color = isUp ? 'var(--emerald)' : 'var(--red)';
+  document.getElementById('tt-o').textContent = '$' + bar.open.toLocaleString();
+  document.getElementById('tt-h').textContent = '$' + bar.high.toLocaleString();
+  document.getElementById('tt-l').textContent = '$' + bar.low.toLocaleString();
+  document.getElementById('tt-c').textContent = '$' + bar.close.toLocaleString();
+
+  drawChart();
+});
+
+canvas.addEventListener('mouseleave', () => {
+  hoverIdx = -1;
+  tooltip.style.display = 'none';
+  drawChart();
+});
+
+window.addEventListener('resize', () => { resizeCanvas(); drawChart(); });
+
+const RIGHT_PAD = 68;
+
+function drawChart() {
+  const asset = STATE.assets[STATE.activeAsset];
+  if (!asset || !asset.history.length) return;
+
+  const W  = canvas.width  / (window.devicePixelRatio || 1);
+  const H  = canvas.height / (window.devicePixelRatio || 1);
+  const data = asset.history;
+  const n  = data.length;
+  const dec = asset.dec;
+
+  ctx.clearRect(0, 0, W, H);
+
+  // Panel split
+  const showRSI  = STATE.indicators.rsi;
+  const showMACD = STATE.indicators.macd;
+  const showVol  = STATE.indicators.vol;
+
+  const subCount = [showRSI, showMACD, showVol].filter(Boolean).length;
+  const mainPct  = subCount === 0 ? 0.96 : subCount === 1 ? 0.72 : subCount === 2 ? 0.58 : 0.50;
+  const mainH    = H * mainPct;
+  const subH     = subCount > 0 ? (H * (1 - mainPct)) / subCount : 0;
+
+  const chartW = W - RIGHT_PAD;
+  const step   = chartW / n;
+  const candleW = Math.max(1, step * 0.7);
+
+  // Pre-compute indicators
+  const sma20  = calcSMA(data, 20);
+  const ema9   = calcEMA(data, 9);
+  const bb     = calcBB(data, 20, 2);
+  const rsiArr = calcRSI(data, 14);
+  const macd   = calcMACD(data);
+
+  // Price range
+  let maxP = -Infinity, minP = Infinity;
+  data.forEach(b => { if (b.high > maxP) maxP = b.high; if (b.low < minP) minP = b.low; });
+  if (STATE.indicators.bb) {
+    bb.upper.forEach(v => { if (v && v > maxP) maxP = v; });
+    bb.lower.forEach(v => { if (v && v < minP) minP = v; });
+  }
+  const priceRange = maxP - minP || 1;
+  maxP += priceRange * 0.04;
+  minP -= priceRange * 0.04;
+
+  const scaleY = v => mainH - 30 - ((v - minP) / (maxP - minP)) * (mainH - 50);
+  const xOf    = i => i * step + step / 2;
+
+  // Background for main panel
+  ctx.fillStyle = 'rgba(5,7,15,0.0)';
+  ctx.fillRect(0, 0, chartW, mainH);
+
+  // ── GRID LINES ──
+  ctx.lineWidth = 0.5;
+  for (let g = 0; g <= 6; g++) {
+    const gy = 25 + ((mainH - 55) / 6) * g;
+    const pv = maxP - ((maxP - minP) / 6) * g;
+
+    ctx.strokeStyle = 'rgba(255,255,255,0.025)';
+    ctx.beginPath(); ctx.moveTo(0, gy); ctx.lineTo(chartW, gy); ctx.stroke();
+
+    ctx.fillStyle = '#2d4466';
+    ctx.font = '9px Fira Code, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText('$' + pv.toLocaleString(undefined, {maximumFractionDigits: dec}), chartW + 4, gy + 3);
+  }
+
+  // Time labels bottom
+  for (let i = 0; i < n; i += 25) {
+    const t = data[i].time;
+    const label = t.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+    ctx.fillStyle = '#2d4466';
+    ctx.font = '8px Fira Code, monospace';
+    ctx.textAlign = 'center';
+    ctx.fillText(label, xOf(i), mainH - 8);
+  }
+
+  // ── BOLLINGER BANDS ──
+  if (STATE.indicators.bb) {
+    ctx.lineWidth = 1;
+    ctx.setLineDash([]);
+
+    // Shaded fill
+    ctx.beginPath();
+    let started = false;
+    for (let i = 0; i < n; i++) {
+      if (bb.upper[i] == null) continue;
+      const x = xOf(i), y = scaleY(bb.upper[i]);
+      if (!started) { ctx.moveTo(x, y); started = true; } else ctx.lineTo(x, y);
+    }
+    for (let i = n - 1; i >= 0; i--) {
+      if (bb.lower[i] == null) continue;
+      ctx.lineTo(xOf(i), scaleY(bb.lower[i]));
+    }
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(6,182,212,0.018)';
+    ctx.fill();
+
+    // Lines
+    ['upper','lower'].forEach(k => {
+      ctx.strokeStyle = 'rgba(6,182,212,0.2)';
+      ctx.setLineDash([4, 4]);
+      ctx.beginPath();
+      started = false;
+      for (let i = 0; i < n; i++) {
+        if (bb[k][i] == null) continue;
+        const p = [xOf(i), scaleY(bb[k][i])];
+        if (!started) { ctx.moveTo(...p); started = true; } else ctx.lineTo(...p);
+      }
+      ctx.stroke();
+    });
+    ctx.setLineDash([]);
+  }
+
+  // ── EMA 9 ──
+  if (STATE.indicators.ma) {
+    ctx.strokeStyle = 'rgba(139,92,246,0.55)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    let s = false;
+    for (let i = 0; i < n; i++) {
+      const p = [xOf(i), scaleY(ema9[i])];
+      if (!s) { ctx.moveTo(...p); s = true; } else ctx.lineTo(...p);
+    }
+    ctx.stroke();
+
+    // SMA 20
+    ctx.strokeStyle = 'rgba(217,70,239,0.55)';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    s = false;
+    for (let i = 0; i < n; i++) {
+      if (sma20[i] == null) continue;
+      const p = [xOf(i), scaleY(sma20[i])];
+      if (!s) { ctx.moveTo(...p); s = true; } else ctx.lineTo(...p);
+    }
+    ctx.stroke();
+  }
+
+  // ── CANDLESTICKS ──
+  for (let i = 0; i < n; i++) {
+    const b = data[i];
+    const isUp = b.close >= b.open;
+    const x = i * step;
+    const cx = xOf(i);
+
+    // Wick
+    ctx.strokeStyle = isUp ? 'rgba(16,185,129,0.7)' : 'rgba(244,63,94,0.7)';
+    ctx.lineWidth = 1;
+    ctx.beginPath();
+    ctx.moveTo(cx, scaleY(b.high));
+    ctx.lineTo(cx, scaleY(b.low));
+    ctx.stroke();
+
+    // Body
+    const top = scaleY(Math.max(b.open, b.close));
+    const bot = scaleY(Math.min(b.open, b.close));
+    const bh  = Math.max(bot - top, 1.5);
+
+    if (isUp) {
+      ctx.fillStyle = '#10b981';
+      ctx.strokeStyle = 'rgba(16,185,129,0.4)';
+    } else {
+      ctx.fillStyle = '#f43f5e';
+      ctx.strokeStyle = 'rgba(244,63,94,0.4)';
+    }
+    ctx.lineWidth = 0.5;
+    ctx.fillRect(x + step * 0.15, top, candleW, bh);
+    ctx.strokeRect(x + step * 0.15, top, candleW, bh);
+  }
+
+  // ── HOVERED CANDLE HIGHLIGHT ──
+  if (hoverIdx >= 0) {
+    ctx.fillStyle = 'rgba(6,182,212,0.04)';
+    ctx.fillRect(hoverIdx * step, 0, step, mainH);
+
+    // Vertical crosshair
+    ctx.strokeStyle = 'rgba(6,182,212,0.3)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+    ctx.beginPath();
+    ctx.moveTo(xOf(hoverIdx), 0); ctx.lineTo(xOf(hoverIdx), H);
+    ctx.stroke();
+    ctx.setLineDash([]);
+
+    // Update OHLCV info strip
+    const bar = data[hoverIdx];
+    if (bar) {
+      document.getElementById('cib-open').textContent  = '$' + bar.open.toLocaleString();
+      document.getElementById('cib-high').textContent  = '$' + bar.high.toLocaleString();
+      document.getElementById('cib-low').textContent   = '$' + bar.low.toLocaleString();
+      document.getElementById('cib-close').textContent = '$' + bar.close.toLocaleString();
+      document.getElementById('cib-vol').textContent   = bar.vol.toLocaleString();
+    }
+  }
+
+  // ── SUB-CHARTS ──
+  let subY = mainH;
+
+  const drawSubSeparator = (y, label) => {
+    ctx.fillStyle = 'rgba(5,7,15,0.4)';
+    ctx.fillRect(0, y, W, subH);
+    ctx.strokeStyle = 'rgba(255,255,255,0.04)';
+    ctx.lineWidth = 1;
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y); ctx.stroke();
+    ctx.fillStyle = '#2d4466';
+    ctx.font = '9px Fira Code, monospace';
+    ctx.textAlign = 'left';
+    ctx.fillText(label, 6, y + 11);
+  };
+
+  // ── RSI ──
+  if (showRSI) {
+    drawSubSeparator(subY, 'RSI (14)');
+    const rsiScale = v => subY + subH * (1 - v / 100);
+
+    // Zones
+    ['rgba(244,63,94,0.06)', 'rgba(16,185,129,0.06)'].forEach((c, idx) => {
+      ctx.fillStyle = c;
+      const y1 = idx === 0 ? subY + subH * 0.3 : subY;
+      const y2 = idx === 0 ? subH * 0.1 : subH * 0.3;
+      ctx.fillRect(0, y1, chartW, y2);
+    });
+
+    // 70 / 30 lines
+    [70, 30, 50].forEach(v => {
+      const ry = rsiScale(v);
+      ctx.strokeStyle = v === 50 ? 'rgba(255,255,255,0.04)' : (v === 70 ? 'rgba(244,63,94,0.2)' : 'rgba(16,185,129,0.2)');
+      ctx.lineWidth = 0.8;
+      ctx.setLineDash(v === 50 ? [2,4] : []);
+      ctx.beginPath(); ctx.moveTo(0, ry); ctx.lineTo(chartW, ry); ctx.stroke();
+      ctx.setLineDash([]);
+      ctx.fillStyle = '#2d4466';
+      ctx.textAlign = 'left';
+      ctx.fillText(v, chartW + 4, ry + 3);
+    });
+
+    // RSI line
+    ctx.strokeStyle = '#f59e0b';
+    ctx.lineWidth = 1.2;
+    ctx.beginPath();
+    let s = false;
+    for (let i = 0; i < n; i++) {
+      if (rsiArr[i] == null) continue;
+      const p = [xOf(i), rsiScale(rsiArr[i])];
+      if (!s) { ctx.moveTo(...p); s = true; } else ctx.lineTo(...p);
+    }
+    ctx.stroke();
+
+    // Highlight overbought/oversold area under the line
+    ctx.beginPath();
+    s = false;
+    for (let i = 0; i < n; i++) {
+      if (rsiArr[i] == null) continue;
+      if (!s) { ctx.moveTo(xOf(i), rsiScale(50)); s = true; }
+      ctx.lineTo(xOf(i), rsiScale(rsiArr[i]));
+    }
+    ctx.lineTo(xOf(n-1), rsiScale(50));
+    ctx.closePath();
+    ctx.fillStyle = 'rgba(245,158,11,0.06)';
+    ctx.fill();
+
+    // Live RSI info bar label
+    const lastRSI = rsiArr.filter(v => v != null).slice(-1)[0];
+    if (lastRSI != null) {
+      document.getElementById('cib-rsi').textContent = lastRSI.toFixed(1);
+      document.getElementById('cib-rsi').style.color = lastRSI > 70 ? 'var(--red)' : lastRSI < 30 ? 'var(--emerald)' : 'var(--amber)';
+    }
+
+    subY += subH;
+  }
+
+  // ── MACD ──
+  if (showMACD) {
+    drawSubSeparator(subY, 'MACD (12,26,9)');
+    const all = [...macd.line, ...macd.signal, ...macd.hist].map(Math.abs);
+    const maxM = (Math.max(...all) || 0.01) * 1.15;
+    const midY = subY + subH / 2;
+    const macdScale = v => midY - (v / maxM) * (subH / 2 - 8);
+
+    // Zero line
+    ctx.strokeStyle = 'rgba(255,255,255,0.05)';
+    ctx.lineWidth = 0.8;
+    ctx.beginPath(); ctx.moveTo(0, midY); ctx.lineTo(chartW, midY); ctx.stroke();
+
+    // Histogram
+    for (let i = 0; i < n; i++) {
+      const v = macd.hist[i] || 0;
+      const x = i * step;
+      const y0 = midY;
+      const y1 = macdScale(v);
+      ctx.fillStyle = v >= 0 ? 'rgba(16,185,129,0.35)' : 'rgba(244,63,94,0.35)';
+      ctx.fillRect(x + step * 0.15, Math.min(y0, y1), candleW, Math.abs(y0 - y1));
+    }
+
+    // MACD & Signal lines
+    [[macd.line,'rgba(6,182,212,0.8)'],[macd.signal,'rgba(245,158,11,0.7)']].forEach(([arr, col]) => {
+      ctx.strokeStyle = col;
+      ctx.lineWidth = 1.1;
+      ctx.beginPath();
+      let s = false;
+      for (let i = 0; i < n; i++) {
+        const p = [xOf(i), macdScale(arr[i] || 0)];
+        if (!s) { ctx.moveTo(...p); s = true; } else ctx.lineTo(...p);
+      }
+      ctx.stroke();
+    });
+
+    // Label
+    const lastMACD = macd.line[n-1] || 0;
+    document.getElementById('cib-macd').textContent = lastMACD >= 0 ? '+' + lastMACD.toFixed(2) : lastMACD.toFixed(2);
+    document.getElementById('cib-macd').style.color = lastMACD >= 0 ? 'var(--emerald)' : 'var(--red)';
+
+    subY += subH;
+  }
+
+  // ── VOLUME BARS ──
+  if (showVol) {
+    drawSubSeparator(subY, 'Volume');
+    const maxVol = Math.max(...data.map(b => b.vol)) || 1;
+    for (let i = 0; i < n; i++) {
+      const b = data[i];
+      const barH = (b.vol / maxVol) * (subH - 18);
+      const x = i * step;
+      ctx.fillStyle = b.close >= b.open ? 'rgba(16,185,129,0.35)' : 'rgba(244,63,94,0.35)';
+      ctx.fillRect(x + step * 0.15, subY + subH - barH - 8, candleW, barH);
+    }
+    subY += subH;
+  }
+
+  // Update MA info strip
+  const lastSMA = sma20[n-1];
+  document.getElementById('cib-ma20').textContent = lastSMA ? '$' + lastSMA.toFixed(dec) : '—';
+
+  // Last candle OHLCV when not hovering
+  if (hoverIdx < 0) {
+    const last = data[n-1];
+    if (last) {
+      document.getElementById('cib-open').textContent  = '$' + last.open.toLocaleString();
+      document.getElementById('cib-high').textContent  = '$' + last.high.toLocaleString();
+      document.getElementById('cib-low').textContent   = '$' + last.low.toLocaleString();
+      document.getElementById('cib-close').textContent = '$' + last.close.toLocaleString();
+      document.getElementById('cib-vol').textContent   = last.vol.toLocaleString();
+    }
+  }
+}
+
+// ============================================================
+// LIVE PRICE TICKER
+// ============================================================
+function tickMarketPrices() {
+  Object.values(STATE.assets).forEach(asset => {
+    const drift = (Math.random() - 0.49) * 0.0012;
+    asset.currentPrice = +((asset.currentPrice * (1 + drift)).toFixed(asset.dec));
+    asset.change = +(asset.change + drift * 20).toFixed(2);
+
+    const last = asset.history[asset.history.length - 1];
+    if (last) {
+      last.close = asset.currentPrice;
+      if (asset.currentPrice > last.high) last.high = asset.currentPrice;
+      if (asset.currentPrice < last.low)  last.low  = asset.currentPrice;
+      last.vol += Math.round(Math.random() * 3000);
+    }
+
+    // Occasionally roll new candle
+    if (Math.random() < 0.02) {
+      asset.history.shift();
+      asset.history.push({
+        time: new Date(),
+        open: asset.currentPrice, high: asset.currentPrice,
+        low:  asset.currentPrice, close: asset.currentPrice,
+        vol:  Math.round(30000 + Math.random() * 60000)
+      });
+    }
+
+    if (asset.type === 'perp') {
+      asset.fundingRate = +(asset.fundingRate + (Math.random() - 0.5) * 0.0008).toFixed(4);
+      asset.oi = +(asset.oi + (Math.random() - 0.49) * 1.8).toFixed(2);
+      if (Math.random() < 0.08) asset.liq = +(asset.liq + Math.random() * 0.3).toFixed(1);
+    }
+  });
+
+  updateSidebarPrices();
+  updateTopbar();
+  updateFooterBar();
+  drawChart();
+  generateCEXOrderbook();
+}
+
+// ============================================================
+// SIDEBAR PRICES
+// ============================================================
+function updateSidebarPrices() {
+  Object.entries(STATE.assets).forEach(([key, asset]) => {
+    const id = key.replace(/\//g, '-');
+    const priceEl = document.getElementById('price-' + id);
+    const chgEl   = document.getElementById('chg-' + id);
+    if (priceEl) {
+      priceEl.textContent = '$' + asset.currentPrice.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: asset.dec});
+      priceEl.className = 'asset-price-val ' + (asset.change >= 0 ? 'price-up' : 'price-down');
+    }
+    if (chgEl) {
+      chgEl.textContent = (asset.change >= 0 ? '+' : '') + asset.change.toFixed(2) + '%';
+      chgEl.className = 'asset-change ' + (asset.change >= 0 ? 'price-up' : 'price-down');
+    }
+  });
+}
+
+// ============================================================
+// TOPBAR
+// ============================================================
+function updateTopbar() {
+  const asset = STATE.assets[STATE.activeAsset];
+  if (!asset) return;
+
+  document.getElementById('hero-price').textContent = '$' + asset.currentPrice.toLocaleString(undefined, {minimumFractionDigits: asset.dec});
+  const chgEl = document.getElementById('hero-change');
+  chgEl.textContent = (asset.change >= 0 ? '+' : '') + asset.change.toFixed(2) + '%';
+  chgEl.className = 'asset-hero-change ' + (asset.change >= 0 ? 'price-up' : 'price-down');
+
+  document.getElementById('tb-agents').textContent = STATE.agentsRunning ? '4 / 4' : '0 / 4';
+  document.getElementById('tb-alpha').textContent  = STATE.opportunities.length + ' Active';
+  document.getElementById('tb-mood').textContent   = STATE.sentimentIndex + '% ' + (STATE.sentimentIndex > 55 ? 'Bullish' : state.sentimentIndex < 45 ? 'Bearish' : 'Neutral');
+  document.getElementById('tb-fear').textContent   = (STATE.fearGreed > 75 ? 'Extreme Greed ' : STATE.fearGreed > 55 ? 'Greed ' : STATE.fearGreed > 45 ? 'Neutral ' : STATE.fearGreed > 25 ? 'Fear ' : 'Extreme Fear ') + STATE.fearGreed;
+  document.getElementById('tb-fear').style.color   = STATE.fearGreed > 65 ? 'var(--amber)' : STATE.fearGreed < 35 ? 'var(--red)' : 'var(--text-primary)';
+}
+
+// ============================================================
+// FOOTER BAR
+// ============================================================
+function updateFooterBar() {
+  const asset = STATE.assets[STATE.activeAsset];
+  if (!asset) return;
+
+  document.getElementById('fs-market').textContent = asset.symbol;
+
+  if (asset.type === 'perp') {
+    document.getElementById('fs-funding').textContent = (asset.fundingRate >= 0 ? '+' : '') + asset.fundingRate.toFixed(4) + '%';
+    document.getElementById('fs-funding').className = 'fs-value ' + (asset.fundingRate >= 0 ? 'price-up' : 'price-down');
+    document.getElementById('fs-oi').textContent  = '$' + asset.oi.toFixed(2) + 'M';
+    document.getElementById('fs-liq').textContent = '$' + asset.liq.toFixed(1) + 'M Longs';
+    document.getElementById('fs-ls').textContent  = asset.lsRatio[0] + '% / ' + asset.lsRatio[1] + '%';
+  } else {
+    document.getElementById('fs-funding').textContent = 'N/A';
+    document.getElementById('fs-oi').textContent  = 'Vol: $' + (asset.vol24h || 0).toFixed(1) + 'M';
+    document.getElementById('fs-liq').textContent = 'N/A';
+    document.getElementById('fs-ls').textContent  = 'N/A';
+  }
+
+  const cEl = document.getElementById('fs-consensus');
+  if (asset.change > 1.2) { cEl.textContent = 'Strong Buy'; cEl.className = 'action-badge ab-buy'; }
+  else if (asset.change > 0.3) { cEl.textContent = 'Buy'; cEl.className = 'action-badge ab-buy'; }
+  else if (asset.change < -1.2) { cEl.textContent = 'Strong Sell'; cEl.className = 'action-badge ab-sell'; }
+  else if (asset.change < -0.3) { cEl.textContent = 'Sell'; cEl.className = 'action-badge ab-sell'; }
+  else { cEl.textContent = 'Hold'; cEl.className = 'action-badge ab-hold'; }
+}
+
+// ============================================================
+// ORDERBOOK
+// ============================================================
+function generateCEXOrderbook() {
+  if (STATE.marketView !== 'cex') return;
+  const asset = STATE.assets[STATE.activeAsset];
+  if (!asset) return;
+
+  const mid = asset.currentPrice;
+  const spread = asset.spread || mid * 0.0001;
+  const half = spread / 2;
+  const dec  = asset.dec;
+
+  const asksEl = document.getElementById('ob-asks');
+  const bidsEl = document.getElementById('ob-bids');
+  const spreadEl = document.getElementById('ob-spread');
+  const midEl = document.getElementById('ob-mid');
+
+  let askHTML = '', bidHTML = '';
+
+  for (let i = 6; i >= 1; i--) {
+    const price = mid + half + i * mid * 0.00014;
+    const size  = Math.random() * (100 / Math.sqrt(i));
+    const pct   = Math.min((size / 80) * 100, 100);
+    askHTML += `<div class="ob-row">
+      <div class="ob-bar ask" style="width:${pct}%"></div>
+      <span class="ob-cell ob-ask-price">${price.toFixed(dec)}</span>
+      <span class="ob-cell text-muted">${size.toFixed(3)}</span>
+      <span class="ob-cell text-muted">${(price * size).toLocaleString(undefined,{maximumFractionDigits:0})}</span>
+    </div>`;
+  }
+
+  for (let i = 1; i <= 6; i++) {
+    const price = mid - half - i * mid * 0.00014;
+    const size  = Math.random() * (100 / Math.sqrt(i));
+    const pct   = Math.min((size / 80) * 100, 100);
+    bidHTML += `<div class="ob-row">
+      <div class="ob-bar bid" style="width:${pct}%"></div>
+      <span class="ob-cell ob-bid-price">${price.toFixed(dec)}</span>
+      <span class="ob-cell text-muted">${size.toFixed(3)}</span>
+      <span class="ob-cell text-muted">${(price * size).toLocaleString(undefined,{maximumFractionDigits:0})}</span>
+    </div>`;
+  }
+
+  asksEl.innerHTML = askHTML;
+  bidsEl.innerHTML = bidHTML;
+  midEl.textContent = '$' + mid.toLocaleString();
+  spreadEl.innerHTML = `<span class="ob-mid-price">$${mid.toLocaleString()}</span>Spread: $${spread.toFixed(dec)} · ${((spread/mid)*100).toFixed(3)}%`;
+}
+
+// ============================================================
+// DEX TRADES STREAM
+// ============================================================
+function createDEXTrade() {
+  const asset = STATE.assets[STATE.activeAsset];
+  if (!asset) return;
+
+  const isBuy = Math.random() > 0.48;
+  const now = new Date();
+  const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+  let amount = Math.random() * 80;
+  if (asset.symbol.includes('BTC')) amount = Math.random() * 3;
+  if (asset.symbol.includes('SOL')) amount = Math.random() * 200;
+
+  const html = `<div class="dex-row">
+    <span class="text-muted">${timeStr}</span>
+    <span style="color:${isBuy ? 'var(--emerald)' : 'var(--red)'};font-weight:600;">${isBuy ? 'BUY' : 'SELL'}</span>
+    <span class="text-mono">${amount.toFixed(3)}</span>
+    <span class="text-mono text-cyan">$${asset.currentPrice.toLocaleString()}</span>
+  </div>`;
+
+  STATE.dexTrades.unshift(html);
+  if (STATE.dexTrades.length > 40) STATE.dexTrades.pop();
+
+  if (STATE.marketView === 'dex') {
+    document.getElementById('dex-trades-stream').innerHTML = STATE.dexTrades.join('');
+  }
+}
+
+// Pre-fill DEX log
+for (let i = 0; i < 18; i++) createDEXTrade();
+
+// ============================================================
+// SENTIMENT ENGINE
+// ============================================================
+const NEWS_TEMPLATES = [
+  { text: "Whale wallet moved 450 BTC to Coinbase. Potential distribution signal.", impact: -4, source: "ChainSentinel" },
+  { text: "Fed Chair signals rate cuts in upcoming FOMC. Macro turns risk-on for digital assets.", impact: 7, source: "VoxMedia" },
+  { text: "VC fund commits $2.5B to Web3 infrastructure across Solana and Ethereum.", impact: 5, source: "VoxMedia" },
+  { text: "Perp funding rates spike — highest over-leverage since Q1 2024. Long squeeze risk.", impact: -4, source: "ChainSentinel" },
+  { text: "RSI divergence on SOL-PERP 15m suggests local top near $185. Take profit zones.", impact: -2, source: "Aegis" },
+  { text: "Uniswap DAO votes to activate protocol fee switch for xUNI stakers. Heavy accumulation.", impact: 6, source: "ChainSentinel" },
+  { text: "Nasdaq hits all-time high. NVDA chip revenue forecast beats estimates by 28%.", impact: 4, source: "VoxMedia" },
+  { text: "MEV sandwich vulnerability drains $1.2M from DEX arbitrage pool.", impact: -5, source: "ChainSentinel" },
+  { text: "MACD gold crossover confirmed on BTC daily chart. Historically bullish pattern.", impact: 5, source: "Aegis" },
+  { text: "Liquidation cascade wipes $120M open interest. Market deleveraging in progress.", impact: -3, source: "Aegis" },
+  { text: "SEC Commissioner comments positively on spot ETF framework. Market surges.", impact: 8, source: "VoxMedia" },
+  { text: "Stablecoin supply grows by $4.2B week-over-week — dry powder accumulating.", impact: 5, source: "ChainSentinel" },
+  { text: "Twitter mentions of BTC up 22% in past hour. Retail FOMO signals emerging.", impact: 3, source: "VoxPopulist" },
+  { text: "Open interest on BTC-PERP reaches ATH. Elevated risk of volatile liquidation event.", impact: -3, source: "Aegis" },
+];
+
+function tickSentiment() {
+  if (Math.random() < 0.22) {
+    const tmpl = NEWS_TEMPLATES[Math.floor(Math.random() * NEWS_TEMPLATES.length)];
+    const isBull = tmpl.impact >= 0;
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+
+    let idx = +(STATE.sentimentIndex + tmpl.impact);
+    idx = Math.max(10, Math.min(92, idx));
+    STATE.sentimentIndex = idx;
+
+    STATE.fearGreed = Math.max(5, Math.min(95, STATE.fearGreed + (tmpl.impact * 0.4)));
+
+    const html = `<div class="news-item new-item">
+      <div class="ni-header">
+        <span class="ni-source">${tmpl.source}</span>
+        <span class="ni-time">${timeStr}</span>
+      </div>
+      <div class="ni-text">${tmpl.text}</div>
+      <div class="ni-impact" style="color:${isBull ? 'var(--emerald)' : 'var(--red)'}">
+        Sentiment impact: ${isBull ? '+' : ''}${tmpl.impact}%
+      </div>
+    </div>`;
+
+    STATE.newsFeed.unshift(html);
+    if (STATE.newsFeed.length > 25) STATE.newsFeed.pop();
+
+    document.getElementById('news-feed').innerHTML = STATE.newsFeed.join('');
+
+    // Gauge
+    document.getElementById('sentiment-needle').style.left = idx + '%';
+    const pctLabel = document.getElementById('sentiment-pct-label');
+    pctLabel.textContent = idx + '% ' + (idx > 60 ? 'Bullish' : idx < 40 ? 'Bearish' : 'Neutral');
+    pctLabel.style.color = idx > 60 ? 'var(--emerald)' : idx < 40 ? 'var(--red)' : 'var(--amber)';
+
+    // Source cards fluctuate
+    const src = ['src-twitter','src-reddit','src-news','src-chain'];
+    const srcEl = document.getElementById(src[Math.floor(Math.random() * src.length)]);
+    if (srcEl) {
+      const curr = parseInt(srcEl.textContent) + (isBull ? 1 : -1) * Math.ceil(Math.random() * 3);
+      srcEl.textContent = (curr >= 0 ? '+' : '') + curr;
+      srcEl.className = 's-source-score ' + (curr >= 0 ? 'price-up' : 'price-down');
+    }
+
+    document.getElementById('sentiment-sync-time').textContent = 'Updated ' + timeStr;
+    document.getElementById('tb-mood').textContent = STATE.sentimentIndex + '% ' + (STATE.sentimentIndex > 55 ? 'Bullish' : 'Bearish');
+  }
+}
+
+// Pre-fill news feed
+for (let i = NEWS_TEMPLATES.length - 1; i >= 0; i--) {
+  const tmpl = NEWS_TEMPLATES[i];
+  const isBull = tmpl.impact >= 0;
+  const timeStr = new Date(Date.now() - i * 90 * 1000).toLocaleTimeString([], {hour:'2-digit', minute:'2-digit'});
+  STATE.newsFeed.push(`<div class="news-item">
+    <div class="ni-header"><span class="ni-source">${tmpl.source}</span><span class="ni-time">${timeStr}</span></div>
+    <div class="ni-text">${tmpl.text}</div>
+    <div class="ni-impact" style="color:${isBull ? 'var(--emerald)' : 'var(--red)'}">Impact: ${isBull ? '+' : ''}${tmpl.impact}%</div>
+  </div>`);
+}
+document.getElementById('news-feed').innerHTML = STATE.newsFeed.join('');
+
+// ============================================================
+// ALPHA OPPORTUNITIES ENGINE
+// ============================================================
+const REASONS_BUY  = [
+  'RSI (14) printed oversold reversal bounce at 15m support cluster.',
+  'Bullish MACD crossover on 1H — buyer delta surging vs ask volume.',
+  'Bollinger Band compression breakout to the upside. Momentum building.',
+  'BB lower-band touch + RSI divergence → mean reversion signal.',
+  'Order book shows deep bid stacking; spread compression detected.',
+  '24h forecast model projects 4.5% extension. Risk/reward 1:2.8.',
+  'EMA 9 crossed above SMA 20. Golden cross pattern confirmed.',
+];
+const REASONS_SELL = [
+  'RSI (14) overbought divergence near upper BB band. Distribution zone.',
+  'MACD histogram flipped negative; declining buyer volume on orderbook.',
+  'Massive whale sell wall appearing on Coinbase CEX at resistance.',
+  'Over-leveraged longs: funding spike creates liquidation cascade risk.',
+  'BB upper-band rejection after three failed breakout candles.',
+  'Open Interest at local ATH with declining price — bearish divergence.',
+  'EMA 9 crossed below SMA 20. Death cross confirmation on 4H.',
+];
+
+function generateAlpha(customAsset = null, forceAction = null) {
+  const key   = customAsset || Object.keys(STATE.assets)[Math.floor(Math.random() * Object.keys(STATE.assets).length)];
+  const asset = STATE.assets[key];
+  const isBuy = forceAction ? forceAction === 'BUY' : Math.random() > 0.42;
+  const action = isBuy ? 'BUY' : 'SELL';
+  const dec = asset.dec;
+  const entry = asset.currentPrice;
+  const target = isBuy ? entry * (1 + 0.065 + Math.random() * 0.04) : entry * (1 - 0.055 - Math.random() * 0.03);
+  const stop   = isBuy ? entry * (1 - 0.025 - Math.random() * 0.01) : entry * (1 + 0.025 + Math.random() * 0.01);
+  const conf   = Math.round(68 + Math.random() * 28);
+  const reasons = isBuy ? REASONS_BUY : REASONS_SELL;
+  const reason  = reasons[Math.floor(Math.random() * reasons.length)];
+  const rr = Math.abs(target - entry) / Math.abs(stop - entry);
+  const now = new Date();
+
+  const opp = {
+    time: now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'}),
+    asset: asset.symbol,
+    action, entry, target, stop, conf, reason,
+    rr: rr.toFixed(1), dec
+  };
+
+  STATE.opportunities.unshift(opp);
+  if (STATE.opportunities.length > 40) STATE.opportunities.pop();
+
+  // Track agent signal counts
+  STATE.agentSignalCount.aegis++;
+  if (Math.random() > 0.5) STATE.agentSignalCount.predictor++;
+  updateAgentSignalCounts();
+
+  renderOpportunities();
+  updateAlphaBadge();
+  sendTelegramAlert(opp);
+
+  // Show toast
+  showToast({
+    type: isBuy ? 'alpha' : 'warning',
+    icon: isBuy ? '🎯' : '⚠️',
+    title: `${action} Signal — ${asset.symbol}`,
+    msg: `${conf}% conf · Target $${target.toFixed(dec)} · R/R 1:${rr.toFixed(1)}`
+  });
+}
+
+function updateAgentSignalCounts() {
+  ['aegis','sentinel','vox','predictor'].forEach(k => {
+    const el = document.getElementById('sigs-' + k);
+    if (el) el.textContent = STATE.agentSignalCount[k];
+  });
+}
+
+function renderOpportunities() {
+  const list = STATE.oppFilter === 'buy'  ? STATE.opportunities.filter(o => o.action === 'BUY') :
+               STATE.oppFilter === 'sell' ? STATE.opportunities.filter(o => o.action === 'SELL') :
+               STATE.opportunities;
+
+  let html = '';
+  if (list.length === 0) {
+    html = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">No signals yet — agents are computing…</td></tr>`;
+  } else {
+    list.forEach((o, idx) => {
+      const badgeClass = o.action === 'BUY' ? 'ab-buy' : 'ab-sell';
+      const confPct    = o.conf;
+      html += `<tr class="${idx === 0 ? 'new-row' : ''}">
+        <td class="text-muted text-mono" style="font-size:0.7rem;">${o.time}</td>
+        <td style="font-weight:700;color:var(--cyan);">${o.asset}</td>
+        <td><span class="action-badge ${badgeClass}">${o.action}</span></td>
+        <td class="text-mono" style="font-weight:700;">$${o.target.toFixed(o.dec)}</td>
+        <td class="text-mono" style="color:var(--red);">$${o.stop.toFixed(o.dec)}</td>
+        <td>
+          <div class="conf-bar-inline">
+            <span style="font-weight:700;font-family:var(--font-mono);font-size:0.72rem;">${confPct}%</span>
+            <div class="conf-bar-inline-track"><div class="conf-bar-inline-fill" style="width:${confPct}%"></div></div>
+          </div>
+        </td>
+        <td style="color:var(--text-secondary);font-size:0.72rem;max-width:220px;">${o.reason}</td>
+      </tr>`;
+    });
+  }
+
+  document.getElementById('opp-tbody').innerHTML = html;
+}
+
+function updateAlphaBadge() {
+  document.getElementById('alpha-count-badge').textContent = STATE.opportunities.length;
+  document.getElementById('tb-alpha').textContent = STATE.opportunities.length + ' Active';
+}
+
+// Pre-fill opportunities
+for (let i = 0; i < 6; i++) generateAlpha();
+
+// ============================================================
+// MULTI-AGENT LOG SYSTEM
+// ============================================================
+const AGENT_LOGS = {
+  aegis: [
+    "EMA 9/21 crossover bullish signal detected on SOL-PERP 15m chart.",
+    "RSI readings: BTC (61.2), ETH (48.4), SOL (68.5). No extremes.",
+    "Bollinger Band squeeze on BTC-PERP — volatility breakout imminent.",
+    "SMA20 acting as dynamic support for current uptrend. Trend intact.",
+    "RSI bearish divergence spotted on ETH-PERP 1H — warning issued.",
+    "MACD signal crossover confirmed on BTC daily chart. Bullish bias.",
+    "Fib retracement 0.618 level at $66,450 — watch for reaction.",
+    "Volume spike detected on recent green candle — strong accumulation.",
+  ],
+  sentinel: [
+    "Whale swap: 0x8a92 converted 45 WETH → 170,120 USDC on Uniswap.",
+    "USDC/WETH pool TVL expanded by $2.1M in last 30 minutes.",
+    "Average Ethereum gas: 11 Gwei. Arbitrage windows highly efficient.",
+    "MEV bot extracted 1.4 ETH in sandwich profit in block #19521002.",
+    "LP added $450k to SOL/USDC concentrated liquidity pool on Raydium.",
+    "Stablecoin bridge: $15M USDC transferred from Ethereum to Solana.",
+    "Exchange net outflow BTC: +$82M today. Bullish supply signal.",
+    "Smart contract event: Curve Finance emitted $350k stablecoin swap.",
+  ],
+  vox: [
+    "Twitter volume #Bitcoin +14.5% in 60 minutes. Retail FOMO detected.",
+    "Scanned 14 major news articles: 10 bullish, 3 neutral, 1 bearish.",
+    "Reddit r/CryptoCurrency: 8.2k comments on funding rates topic.",
+    "Extreme positive posts surge post-NVDA earnings. Spillover to crypto.",
+    "FUD analysis: exchange outage rumors disproven. Market calming.",
+    "SEC ETF commentary: neutral-positive. Institutional confidence high.",
+    "Fear & Greed index moved from 62 → 65 in past 30 minutes.",
+    "YouTube search volume for 'Bitcoin 2025' up 34%. Retail interest.",
+  ],
+  predictor: [
+    "Aggregating all 3 agent signals. Building consensus forecast matrix.",
+    "SOL 24h probability range: [$172.50, $186.20] — 78% confidence.",
+    "Consensus: 3/4 agent signals bullish. Combined conviction: 82.5%.",
+    "BTC 4h directional forecast: UP — probability 74%. Monitoring.",
+    "Triggering BUY alpha for NVDA: BB squeeze + positive sentiment.",
+    "Multi-asset correlation: BTC leading ETH by ~15min lag currently.",
+    "Expected value for ETH-PERP long on 12h horizon: +$85.50.",
+    "Recalibrating Monte Carlo simulation with latest on-chain data.",
+  ]
+};
+
+const terminalEl = document.getElementById('terminal-screen');
+const agentLabelEl = document.getElementById('active-agent-label');
+
+function streamAgentLogs() {
+  if (!STATE.agentsRunning) return;
+
+  Object.keys(AGENT_LOGS).forEach(agentKey => {
+    if (Math.random() < 0.28) {
+      const now = new Date();
+      const timeStr = now.toLocaleTimeString([], {hour:'2-digit', minute:'2-digit', second:'2-digit'});
+      const msgs = AGENT_LOGS[agentKey];
+      const msg  = msgs[Math.floor(Math.random() * msgs.length)];
+
+      const log = { time: timeStr, agent: agentKey, msg };
+      STATE.agentLogs[agentKey].push(log);
+      if (STATE.agentLogs[agentKey].length > 60) STATE.agentLogs[agentKey].shift();
+
+      // Update confidence bars
+      const confEl = document.getElementById('conf-' + agentKey);
+      const barEl  = document.getElementById('bar-' + agentKey);
+      if (confEl) {
+        let c = parseInt(confEl.textContent);
+        c = Math.max(55, Math.min(97, c + (Math.random() > 0.5 ? 1 : -1)));
+        confEl.textContent = c + '%';
+        if (barEl) barEl.style.width = c + '%';
+      }
+
+      if (STATE.activeAgent === agentKey) appendTerminalLine(log);
+    }
+  });
+}
+
+function appendTerminalLine(log) {
+  const line = document.createElement('div');
+  line.className = 't-line';
+  line.innerHTML = `<span class="t-time">[${log.time}]</span><span class="t-agent ${log.agent}">${log.agent.toUpperCase()}</span><span class="t-msg">${log.msg}</span>`;
+  terminalEl.appendChild(line);
+  terminalEl.scrollTop = terminalEl.scrollHeight;
+  while (terminalEl.childElementCount > 80) terminalEl.removeChild(terminalEl.firstChild);
+}
+
+function switchTerminal(agentKey) {
+  STATE.activeAgent = agentKey;
+  document.querySelectorAll('.agent-card').forEach(c => c.classList.toggle('active', c.dataset.agent === agentKey));
+  agentLabelEl.textContent = agentKey.toUpperCase();
+  terminalEl.innerHTML = '';
+  STATE.agentLogs[agentKey].slice(-30).forEach(l => appendTerminalLine(l));
+}
+
+// Pre-fill logs
+Object.keys(AGENT_LOGS).forEach(k => {
+  for (let i = 0; i < 6; i++) {
+    const timeStr = new Date(Date.now() - (6-i)*12000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const msgs = AGENT_LOGS[k];
+    STATE.agentLogs[k].push({ time: timeStr, agent: k, msg: msgs[Math.floor(Math.random() * msgs.length)] });
+  }
+});
+switchTerminal('aegis');
+
+// ============================================================
+// PREDICTORX CHAT ENGINE
+// ============================================================
+const chatEl = document.getElementById('chat-messages');
+const chatInput = document.getElementById('chat-input');
+
+function sendChat(customText) {
+  const q = customText || chatInput.value.trim();
+  if (!q) return;
+  if (!customText) chatInput.value = '';
+
+  // User bubble
+  const userMsg = document.createElement('div');
+  userMsg.className = 'msg user';
+  userMsg.innerHTML = `<div class="msg-bubble">${q}</div><span class="msg-meta">You · just now</span>`;
+  chatEl.appendChild(userMsg);
+  chatEl.scrollTop = chatEl.scrollHeight;
+
+  // Typing indicator
+  const typing = document.createElement('div');
+  typing.className = 'msg agent';
+  typing.innerHTML = `<div class="typing-indicator"><div class="typing-dot"></div><div class="typing-dot"></div><div class="typing-dot"></div></div>`;
+  chatEl.appendChild(typing);
+  chatEl.scrollTop = chatEl.scrollHeight;
+
+  setTimeout(() => {
+    typing.remove();
+    const asset = STATE.assets[STATE.activeAsset];
+    const reply = buildForecastResponse(q, asset);
+    const agentMsg = document.createElement('div');
+    agentMsg.className = 'msg agent';
+    agentMsg.innerHTML = `<div class="msg-bubble">${reply}</div><span class="msg-meta">PredictorX · ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>`;
+    chatEl.appendChild(agentMsg);
+    chatEl.scrollTop = chatEl.scrollHeight;
+  }, 800 + Math.random() * 600);
+}
+
+function buildForecastResponse(query, asset) {
+  const { symbol, currentPrice: price, change, dec, history, type } = asset;
+  const changeStr = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
+  const n = history.length;
+  const sma20 = calcSMA(history, 20)[n-1] || price;
+  const bb = calcBB(history, 20, 2);
+  const bbU = bb.upper[n-1] || price * 1.02;
+  const bbL = bb.lower[n-1] || price * 0.98;
+  const rsi  = calcRSI(history, 14)[n-1] || 52;
+  const macd = calcMACD(history);
+  const macdLine = macd.line[n-1] || 0;
+  const macdSig  = macd.signal[n-1] || 0;
+  const conf = Math.round(72 + Math.random() * 22);
+  const lq = query.toLowerCase();
+
+  let body = '', metrics = '';
+
+  const codeBlock = `<div class="chat-code">// Live indicator snapshot — ${symbol}
+Price   : $${price.toLocaleString()}
+SMA_20  : $${sma20.toFixed(dec)}
+RSI_14  : ${rsi.toFixed(2)} ${rsi > 70 ? '← Overbought' : rsi < 30 ? '← Oversold' : '← Neutral'}
+BB_Upper: $${bbU.toFixed(dec)}
+BB_Lower: $${bbL.toFixed(dec)}
+MACD    : ${macdLine >= 0 ? '+' : ''}${macdLine.toFixed(4)}
+Signal  : ${macdSig.toFixed(4)}
+Conf    : ${conf}%</div>`;
+
+  if (lq.includes('24h') || lq.includes('forecast') || lq.includes('predict') || lq.includes('price')) {
+    const bullish = change > -0.2 && rsi > 44 && macdLine > macdSig;
+    const dir = bullish ? 'BULLISH CONTINUATION' : 'BEARISH RETRACEMENT';
+    const dirColor = bullish ? 'var(--emerald)' : 'var(--red)';
+    const target = (price * (1 + (bullish ? 0.045 : -0.032))).toFixed(dec);
+    body = `<strong>24h Price Projection for ${symbol}</strong><br><br>
+Based on current momentum indicators, I'm forecasting a <span style="color:${dirColor};font-weight:700;">${dir}</span> scenario.<br><br>
+RSI at ${rsi.toFixed(1)} shows ${rsi > 60 ? 'buyer strength with caution near overbought' : rsi < 40 ? 'oversold bounce setup forming' : 'neutral ground with room to move'}. 
+Bollinger bandwidth suggests ${((bbU-bbL)/price*100).toFixed(2)}% volatility range. 
+MACD is ${macdLine > macdSig ? 'bullish crossover confirmed ✅' : 'bearish — signal above MACD line ⚠️'}.<br><br>
+<div style="padding:0.5rem;background:rgba(0,0,0,0.2);border-radius:6px;margin-top:0.5rem;font-size:0.72rem;">
+  <strong>Target:</strong> $${target} &nbsp;|&nbsp; <strong>Confidence:</strong> ${conf}% &nbsp;|&nbsp; <strong>Timeframe:</strong> 24H
+</div>`;
+  } else if (lq.includes('support') || lq.includes('resistance') || lq.includes('level')) {
+    body = `<strong>Key Structural Levels — ${symbol}</strong><br><br>
+<strong style="color:var(--red);">Resistance Zones:</strong><br>
+→ $${bbU.toFixed(dec)} — Upper Bollinger Band (dynamic resistance)<br>
+→ $${(sma20 * 1.015).toFixed(dec)} — SMA20 + 1.5% buffer zone<br><br>
+<strong style="color:var(--emerald);">Support Zones:</strong><br>
+→ $${sma20.toFixed(dec)} — SMA20 (key mean reversion level)<br>
+→ $${bbL.toFixed(dec)} — Lower Bollinger Band (oversold support)<br><br>
+RSI (${rsi.toFixed(1)}) confirms the market is in a ${rsi > 55 ? 'distribution phase near resistance' : rsi < 45 ? 'accumulation phase near support' : 'balanced consolidation zone'}.`;
+  } else if (lq.includes('whale') || lq.includes('on-chain') || lq.includes('liquidity')) {
+    const tvl = asset.tvl || (asset.vol24h || 0) * 2;
+    body = `<strong>On-Chain & Liquidity Analysis — ${symbol}</strong><br><br>
+${type === 'stock' ? `Traditional market analysis shows institutional bid pressure with tight spreads. Market makers maintaining active two-sided liquidity. Short-term options flow signals hedging activity.`
+: `DEX/CEX liquidity scan: Pool TVL at ~$${tvl.toFixed(1)}M across major venues.<br><br>
+<strong>Whale activity:</strong> Net exchange outflows over 24h remain positive — bullish supply signal.<br>
+<strong>Funding rate:</strong> ${type === 'perp' ? (asset.fundingRate >= 0 ? 'Positive (' + asset.fundingRate + '%) — longs are paying shorts, over-leverage risk.' : 'Negative — shorts over-extended, squeeze potential.') : 'N/A for spot markets.'}<br>
+<strong>Orderbook depth:</strong> Bid/ask walls show ${Math.random() > 0.5 ? 'demand stacking at support — accumulation' : 'large sell walls overhead — distribution risk'}.`}`;
+  } else if (lq.includes('risk') || lq.includes('long') || lq.includes('short') || lq.includes('entry')) {
+    const risk = rsi > 68 ? 'HIGH' : rsi < 35 ? 'LOW (oversold)' : 'MODERATE';
+    const riskColor = rsi > 68 ? 'var(--red)' : rsi < 35 ? 'var(--emerald)' : 'var(--amber)';
+    const suggestLong = change > 0 && rsi < 65 && macdLine > macdSig;
+    body = `<strong>Risk Assessment & Entry Signal — ${symbol}</strong><br><br>
+Current risk level: <span style="color:${riskColor};font-weight:700;">${risk}</span><br><br>
+<strong>Long entry suitability:</strong> ${suggestLong ? '<span style="color:var(--emerald)">✅ Favourable</span> — momentum and indicators aligned.' : '<span style="color:var(--red)">❌ Cautionary</span> — wait for RSI reset or MACD crossover.'}<br><br>
+<strong>Suggested position parameters:</strong><br>
+→ Entry zone: $${(price * 0.998).toFixed(dec)} – $${price.toFixed(dec)}<br>
+→ Target 1 (TP1): $${(price * 1.03).toFixed(dec)}<br>
+→ Target 2 (TP2): $${(price * 1.065).toFixed(dec)}<br>
+→ Stop loss: $${(price * 0.975).toFixed(dec)}<br>
+→ Risk/Reward: 1:2.6`;
+  } else {
+    body = `<strong>General Analysis — ${symbol}</strong><br><br>
+Current price: <strong>$${price.toLocaleString()}</strong> (${changeStr} 24h)<br><br>
+Bollinger bandwidth: ${((bbU-bbL)/price*100).toFixed(2)}% — ${(bbU-bbL)/price*100 < 2 ? 'volatility compression (breakout likely soon)' : 'normal volatility range'}.<br>
+Momentum: ${rsi > 60 ? 'Overbought territory — caution' : rsi < 40 ? 'Oversold — watch for bounce' : 'Neutral zone — no strong bias'}.<br>
+MACD: ${macdLine > macdSig ? 'Bullish crossover active' : 'Bearish signal present'}.<br><br>
+Select a specific analysis type using the quick prompts below for deeper insights.`;
+  }
+
+  return body + '<br>' + codeBlock;
+}
+
+// Chat quick prompts
+document.querySelectorAll('.quick-prompt-btn').forEach(btn => {
+  btn.addEventListener('click', () => sendChat(btn.dataset.q));
+});
+document.getElementById('chat-send').addEventListener('click', () => sendChat());
+chatInput.addEventListener('keydown', e => { if (e.key === 'Enter') sendChat(); });
+document.getElementById('btn-clear-chat').addEventListener('click', () => {
+  chatEl.innerHTML = '<div class="msg agent"><div class="msg-bubble">Chat cleared. Ready for new analysis queries.</div></div>';
+});
+
+// ============================================================
+// TOAST NOTIFICATION SYSTEM
+// ============================================================
+function showToast({ type = 'info', icon = 'ℹ️', title, msg }) {
+  const container = document.getElementById('toast-container');
+  const toast = document.createElement('div');
+  toast.className = 'toast ' + type;
+  toast.innerHTML = `
+    <div class="toast-icon">${icon}</div>
+    <div class="toast-content">
+      <div class="toast-title">${title}</div>
+      <div class="toast-msg">${msg}</div>
+    </div>
+    <div class="toast-progress"></div>`;
+  container.appendChild(toast);
+
+  // Auto-dismiss after 4.5s
+  setTimeout(() => {
+    toast.classList.add('out');
+    setTimeout(() => toast.remove(), 300);
+  }, 4500);
+}
+
+// ============================================================
+// TELEGRAM INTEGRATION
+// ============================================================
+function sendTelegramAlert(opp) {
+  if (localStorage.getItem('tg-enable') !== 'true') return;
+  const token  = localStorage.getItem('tg-bot-token');
+  const chatId = localStorage.getItem('tg-chat-id');
+  if (!token || !chatId) return;
+
+  const emoji = opp.action === 'BUY' ? '🟢' : '🔴';
+  const text = `${emoji} *Aegis Quantum Alpha Signal*\n\n`
+    + `*Asset:* ${opp.asset}\n`
+    + `*Signal:* ${opp.action}\n`
+    + `*Target Price:* $${opp.target.toFixed(opp.dec)}\n`
+    + `*Stop Loss:* $${opp.stop.toFixed(opp.dec)}\n`
+    + `*R/R Ratio:* 1:${opp.rr}\n`
+    + `*Confidence:* ${opp.conf}%\n`
+    + `*Reason:* ${opp.reason}\n\n`
+    + `Cc: @yashbaing\n_${new Date().toLocaleString()}_`;
+
+  fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'Markdown' })
+  })
+  .then(r => r.json())
+  .then(d => { if (!d.ok) console.error('Telegram error:', d.description); })
+  .catch(e => console.error('Telegram request failed:', e));
+}
+
+function initTelegramModal() {
+  const tokenIn  = document.getElementById('tg-bot-token');
+  const chatIdIn = document.getElementById('tg-chat-id');
+  const enableCb = document.getElementById('tg-enable');
+  const saveBtn  = document.getElementById('btn-tg-save');
+  const testBtn  = document.getElementById('btn-tg-test');
+  const guideBtn = document.getElementById('btn-tg-guide');
+  const guide    = document.getElementById('tg-guide');
+  const pill     = document.getElementById('tg-sidebar-pill');
+  const pillLabel= document.getElementById('tg-pill-label');
+  const dot      = document.getElementById('tg-topbar-dot');
+
+  // Load saved
+  tokenIn.value  = localStorage.getItem('tg-bot-token') || '';
+  chatIdIn.value = localStorage.getItem('tg-chat-id')   || '';
+  enableCb.checked = localStorage.getItem('tg-enable') === 'true';
+  refreshTgUI();
+
+  function refreshTgUI() {
+    const on = localStorage.getItem('tg-enable') === 'true';
+    pill.className = 'tg-status-pill ' + (on ? 'on' : 'off');
+    pillLabel.textContent = on ? '✅ Telegram On' : 'Telegram Off';
+    dot.style.display = on ? 'block' : 'none';
+  }
+
+  guideBtn.addEventListener('click', () => guide.classList.toggle('open'));
+
+  saveBtn.addEventListener('click', () => {
+    localStorage.setItem('tg-bot-token', tokenIn.value.trim());
+    localStorage.setItem('tg-chat-id',   chatIdIn.value.trim());
+    localStorage.setItem('tg-enable',    enableCb.checked ? 'true' : 'false');
+    document.getElementById('tg-modal').classList.remove('open');
+    refreshTgUI();
+    showToast({ type:'info', icon:'✈️', title:'Telegram Configured', msg: enableCb.checked ? 'Alerts are now active. You will receive signals.' : 'Alerts disabled.' });
+  });
+
+  testBtn.addEventListener('click', () => {
+    const t = tokenIn.value.trim(), c = chatIdIn.value.trim();
+    if (!t || !c) { showToast({ type:'error', icon:'❌', title:'Missing credentials', msg:'Enter Bot Token and Chat ID first.' }); return; }
+    testBtn.textContent = 'Sending…';
+    testBtn.disabled = true;
+
+    fetch(`https://api.telegram.org/bot${t}/sendMessage`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ chat_id: c, text: `⚡ *Aegis Quantum — Connection Test*\n\nYour Telegram integration is working! Alpha signals will arrive here.\n\n@yashbaing · ${new Date().toLocaleString()}`, parse_mode: 'Markdown' })
+    })
+    .then(r => r.json())
+    .then(d => {
+      testBtn.textContent = 'Send Test';
+      testBtn.disabled = false;
+      if (d.ok) showToast({ type:'alpha', icon:'✅', title:'Test message sent!', msg:'Check your Telegram chat.' });
+      else showToast({ type:'error', icon:'❌', title:'Telegram API error', msg: d.description });
+    })
+    .catch(e => {
+      testBtn.textContent = 'Send Test';
+      testBtn.disabled = false;
+      showToast({ type:'error', icon:'❌', title:'Network error', msg: e.message });
+    });
+  });
+
+  // Also hook Telegram config button from opp terminal
+  document.getElementById('btn-tg-config-opp').addEventListener('click', () => {
+    document.getElementById('tg-modal').classList.add('open');
+  });
+
+  // Close modal on overlay click
+  document.getElementById('tg-modal').addEventListener('click', e => {
+    if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
+  });
+}
+
+// ============================================================
+// SIDEBAR ASSET SELECTION
+// ============================================================
+function setupAssetNavigation() {
+  // Search filter
+  document.getElementById('asset-search').addEventListener('input', e => {
+    const q = e.target.value.toLowerCase();
+    document.querySelectorAll('.asset-item').forEach(item => {
+      const sym = (item.dataset.asset || '').toLowerCase();
+      item.style.display = sym.includes(q) ? '' : 'none';
+    });
+  });
+
+  document.querySelectorAll('.asset-item').forEach(item => {
+    item.addEventListener('click', () => {
+      document.querySelectorAll('.asset-item').forEach(el => el.classList.remove('active'));
+      item.classList.add('active');
+
+      const key  = item.dataset.asset;
+      const type = item.dataset.type;
+      STATE.activeAsset     = key;
+      STATE.activeAssetType = type;
+
+      // Update hero bar
+      const asset = STATE.assets[key];
+      document.getElementById('hero-name').textContent  = key;
+      document.getElementById('hero-price').textContent = '$' + asset.currentPrice.toLocaleString();
+      document.getElementById('hero-type').textContent  = {
+        perp:'Perpetual Contract', dex:'DEX Liquidity Pool', cex:'CEX Spot Market', stock:'Equity'
+      }[type] || type;
+
+      // Badge
+      const heroIcon = item.querySelector('.asset-icon');
+      const heroEl   = document.getElementById('hero-icon');
+      if (heroIcon && heroEl) {
+        heroEl.style.cssText = heroIcon.style.cssText;
+        heroEl.textContent   = heroIcon.textContent;
+      }
+
+      // Update chart card title
+      document.getElementById('chart-card-title').textContent = key + ' — Price Action';
+
+      // Market view tabs
+      if (type === 'dex') setMarketView('dex');
+      else setMarketView('cex');
+
+      // Terminal log
+      const timeStr = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      const log = { time: timeStr, agent: 'aegis', msg: `Asset context switched to ${key}. Recomputing all indicator overlays.` };
+      STATE.agentLogs.aegis.push(log);
+      if (STATE.activeAgent === 'aegis') appendTerminalLine(log);
+
+      updateTopbar();
+      updateFooterBar();
+      generateCEXOrderbook();
+      drawChart();
+    });
+  });
+}
+
+// ============================================================
+// MARKET VIEW TABS (CEX / DEX)
+// ============================================================
+const btnCex = document.getElementById('btn-ob-cex');
+const btnDex = document.getElementById('btn-ob-dex');
+const cexPanel = document.getElementById('cex-ob-panel');
+const dexPanel = document.getElementById('dex-ob-panel');
+
+function setMarketView(v) {
+  STATE.marketView = v;
+  const isCex = v === 'cex';
+  btnCex.classList.toggle('active', isCex);
+  btnDex.classList.toggle('active', !isCex);
+  cexPanel.style.display = isCex ? 'flex' : 'none';
+  dexPanel.style.display = isCex ? 'none' : 'flex';
+  document.getElementById('ob-card-title').textContent = isCex ? 'Order Book (CEX Depth)' : 'DEX Swap Feed';
+  if (!isCex) document.getElementById('dex-trades-stream').innerHTML = STATE.dexTrades.join('');
+}
+
+btnCex.addEventListener('click', () => setMarketView('cex'));
+btnDex.addEventListener('click', () => setMarketView('dex'));
+
+// ============================================================
+// INDICATOR TOGGLES & TIMEFRAME BUTTONS
+// ============================================================
+document.querySelectorAll('.ind-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    const ind = btn.dataset.ind;
+    STATE.indicators[ind] = !STATE.indicators[ind];
+    btn.classList.toggle('active', STATE.indicators[ind]);
+    drawChart();
+  });
+});
+
+document.querySelectorAll('.timeframe-btn').forEach(btn => {
+  btn.addEventListener('click', () => {
+    document.querySelectorAll('.timeframe-btn').forEach(b => b.classList.remove('active'));
+    btn.classList.add('active');
+    STATE.activeTimeframe = btn.dataset.tf;
+    buildHistory(STATE.assets[STATE.activeAsset]);
+    drawChart();
+    const timeStr = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+    const log = { time: timeStr, agent:'predictor', msg:`Timeframe switched to ${STATE.activeTimeframe}. Recalibrating multi-scale projections.` };
+    STATE.agentLogs.predictor.push(log);
+    if (STATE.activeAgent === 'predictor') appendTerminalLine(log);
+  });
+});
+
+// ============================================================
+// AGENT CARD CLICKS → SWITCH TERMINAL
+// ============================================================
+document.querySelectorAll('.agent-card').forEach(card => {
+  card.addEventListener('click', () => switchTerminal(card.dataset.agent));
+});
+
+// ============================================================
+// PAUSE / RESUME AGENTS
+// ============================================================
+const pauseBtn = document.getElementById('btn-agents-toggle');
+const pauseTopBtn = document.getElementById('btn-pause-agents');
+
+function toggleAgents(running) {
+  STATE.agentsRunning = running;
+  const label = running ? 'Pause All' : 'Resume All';
+  pauseBtn.textContent = label;
+  pauseBtn.classList.toggle('active', running);
+
+  ['aegis','sentinel','vox','predictor'].forEach(k => {
+    const statusEl = document.getElementById('status-' + k);
+    if (statusEl) {
+      statusEl.textContent = running ? '● Active' : '⏸ Paused';
+      statusEl.className   = 'ac-status ' + (running ? 'on' : 'off');
+    }
+  });
+
+  pauseTopBtn.textContent = running ? '⏸' : '▶';
+  showToast({ type:'info', icon: running ? '▶️' : '⏸️', title: running ? 'Agents Resumed' : 'Agents Paused', msg: running ? 'All 4 AI agents are now active.' : 'All agents paused. Data simulation continues.' });
+}
+
+pauseBtn.addEventListener('click',    () => toggleAgents(!STATE.agentsRunning));
+pauseTopBtn.addEventListener('click', () => toggleAgents(!STATE.agentsRunning));
+
+// ============================================================
+// OPPORTUNITY FILTER BUTTONS
+// ============================================================
+['f-all','f-buy','f-sell'].forEach(id => {
+  document.getElementById(id).addEventListener('click', e => {
+    document.querySelectorAll('#opp-wrap .pill-btn').forEach(b => b.classList.remove('active'));
+    e.target.classList.add('active');
+    STATE.oppFilter = {
+      'f-all':'all', 'f-buy':'buy', 'f-sell':'sell'
+    }[id];
+    renderOpportunities();
+  });
+});
+
+// ============================================================
+// MAIN INIT & INTERVALS
+// ============================================================
+function init() {
+  resizeCanvas();
+  drawChart();
+  generateCEXOrderbook();
+  updateSidebarPrices();
+  updateTopbar();
+  updateFooterBar();
+  setupAssetNavigation();
+  initTelegramModal();
+
+  setInterval(tickMarketPrices, 900);
+  setInterval(streamAgentLogs,  1600);
+  setInterval(createDEXTrade,   2200);
+  setInterval(tickSentiment,    3800);
+  setInterval(() => {
+    if (STATE.agentsRunning && Math.random() < 0.75) generateAlpha();
+  }, 16000);
+
+  // Initial toast
+  setTimeout(() => showToast({ type:'info', icon:'⚡', title:'Aegis Quantum Ready', msg:'4 AI agents online. Real-time market analysis active.' }), 1200);
+}
+
+window.addEventListener('load', init);
+window.addEventListener('resize', () => { resizeCanvas(); drawChart(); });
