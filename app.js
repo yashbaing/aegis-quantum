@@ -574,6 +574,133 @@ function updateSidebarPrices() {
 }
 
 // ============================================================
+// ASSET-SPECIFIC MOOD & SENTIMENT
+// ============================================================
+function computeAssetMood(assetKey) {
+  const asset = STATE.assets[assetKey];
+  if (!asset) return { score: 50, label: 'Neutral', emoji: '🟡', color: 'var(--amber)' };
+  
+  const history = asset.history || [];
+  const n = history.length;
+  let score = 50; // Neutral baseline
+  
+  // 1. RSI Factor
+  let rsi = 50;
+  if (n >= 14) {
+    try {
+      const rsiArr = calcRSI(history, 14);
+      const lastRsi = rsiArr[rsiArr.length - 1];
+      if (lastRsi != null) {
+        rsi = lastRsi;
+        score += (rsi - 50) * 0.4; // +/- 20 range
+      }
+    } catch(e) {
+      console.warn("RSI calc failed for", assetKey, e);
+    }
+  }
+  
+  // 2. MACD Factor
+  if (n >= 26) {
+    try {
+      const macd = calcMACD(history);
+      if (macd && macd.line && macd.signal) {
+        const macdLine = macd.line[macd.line.length - 1] || 0;
+        const signalLine = macd.signal[macd.signal.length - 1] || 0;
+        const diff = macdLine - signalLine;
+        // normalize to price to prevent huge shifts on higher-priced stocks
+        const normDiff = (diff / asset.currentPrice) * 10000;
+        score += Math.max(-10, Math.min(10, normDiff * 1.5));
+      }
+    } catch(e) {
+      console.warn("MACD calc failed for", assetKey, e);
+    }
+  }
+  
+  // 3. Price change (24h)
+  score += asset.change * 2.5; // contributor +/- 20
+  
+  // 4. Bollinger Bands position
+  if (n >= 20) {
+    try {
+      const bb = calcBB(history);
+      if (bb && bb.upper && bb.lower) {
+        const upper = bb.upper[bb.upper.length - 1];
+        const lower = bb.lower[bb.lower.length - 1];
+        const lastClose = history[n - 1].close;
+        if (upper != null && lower != null && upper !== lower) {
+          const percent = (lastClose - lower) / (upper - lower);
+          score += (percent - 0.5) * 20; // contributor +/- 10
+        }
+      }
+    } catch(e) {
+      console.warn("BB calc failed for", assetKey, e);
+    }
+  }
+  
+  // Clamping
+  score = Math.max(10, Math.min(95, score));
+  
+  let label = 'Neutral';
+  let emoji = '🟡';
+  let color = 'var(--amber)';
+  
+  if (score >= 75) {
+    label = 'Extreme Greed';
+    emoji = '🚀';
+    color = 'var(--emerald)';
+  } else if (score >= 58) {
+    label = 'Greed';
+    emoji = '🟢';
+    color = 'var(--emerald)';
+  } else if (score >= 43) {
+    label = 'Neutral';
+    emoji = '🟡';
+    color = 'var(--amber)';
+  } else if (score >= 25) {
+    label = 'Fear';
+    emoji = '🔴';
+    color = 'var(--red)';
+  } else {
+    label = 'Extreme Fear';
+    emoji = '⚠️';
+    color = 'var(--red)';
+  }
+  
+  return { score, label, emoji, color };
+}
+
+function updateAssetMoodUI() {
+  const activeKey = STATE.activeAsset;
+  const mood = computeAssetMood(activeKey);
+  
+  // Update topbar stat label
+  const labelEl = document.getElementById('tb-asset-mood-label');
+  if (labelEl) labelEl.textContent = `${activeKey} Mood`;
+  
+  // Update topbar stat value
+  const valEl = document.getElementById('tb-asset-mood');
+  if (valEl) {
+    valEl.textContent = `${mood.emoji} ${mood.label} ${Math.round(mood.score)}%`;
+    valEl.style.color = mood.color;
+  }
+  
+  // Update gauge card title
+  const gaugeTitleEl = document.getElementById('asset-gauge-title');
+  if (gaugeTitleEl) gaugeTitleEl.textContent = `${activeKey} Sentiment`;
+  
+  // Update gauge card value label
+  const gaugeValEl = document.getElementById('asset-sentiment-pct-label');
+  if (gaugeValEl) {
+    gaugeValEl.textContent = `${mood.emoji} ${mood.label} ${Math.round(mood.score)}%`;
+    gaugeValEl.style.color = mood.color;
+  }
+  
+  // Update gauge needle
+  const needleEl = document.getElementById('asset-sentiment-needle');
+  if (needleEl) needleEl.style.left = `${mood.score}%`;
+}
+
+// ============================================================
 // TOPBAR
 // ============================================================
 function updateTopbar() {
@@ -592,6 +719,8 @@ function updateTopbar() {
   const fg = STATE.fearGreed;
   document.getElementById('tb-fear').textContent = (fg > 75 ? 'Extreme Greed ' : fg > 55 ? 'Greed ' : fg > 45 ? 'Neutral ' : fg > 25 ? 'Fear ' : 'Extreme Fear ') + fg;
   document.getElementById('tb-fear').style.color = fg > 65 ? 'var(--amber)' : fg < 35 ? 'var(--red)' : 'var(--text-primary)';
+
+  updateAssetMoodUI();
 }
 
 // ============================================================

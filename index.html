@@ -299,6 +299,10 @@
         <span class="ts-value" id="tb-mood" style="color:var(--emerald)">Bullish 78%</span>
       </div>
       <div class="topbar-stat">
+        <span class="ts-label" id="tb-asset-mood-label">Asset Mood</span>
+        <span class="ts-value" id="tb-asset-mood" style="color:var(--emerald)">🟢 Bullish 68%</span>
+      </div>
+      <div class="topbar-stat">
         <span class="ts-label">Fear &amp; Greed</span>
         <span class="ts-value" id="tb-fear" style="color:var(--amber)">Greed 65</span>
       </div>
@@ -563,18 +567,37 @@
           </div>
         </div>
         <div class="sentiment-body">
-          <div class="s-gauge-wrap">
-            <div class="s-gauge-header">
-              <span class="s-gauge-title">Overall Market Sentiment</span>
-              <span class="s-gauge-value" id="sentiment-pct-label" style="color:var(--emerald)">78% Bullish</span>
+          <div class="s-gauges-container">
+            <!-- Overall Market Sentiment Gauge -->
+            <div class="s-gauge-wrap">
+              <div class="s-gauge-header">
+                <span class="s-gauge-title">Overall Market Sentiment</span>
+                <span class="s-gauge-value" id="sentiment-pct-label" style="color:var(--emerald)">78% Bullish</span>
+              </div>
+              <div class="s-gauge-bar">
+                <div class="s-gauge-needle" id="sentiment-needle" style="left:78%;"></div>
+              </div>
+              <div class="s-gauge-labels">
+                <span style="color:var(--red)">Extreme Fear</span>
+                <span>Neutral</span>
+                <span style="color:var(--emerald)">Extreme Greed</span>
+              </div>
             </div>
-            <div class="s-gauge-bar">
-              <div class="s-gauge-needle" id="sentiment-needle" style="left:78%;"></div>
-            </div>
-            <div class="s-gauge-labels">
-              <span style="color:var(--red)">Extreme Fear</span>
-              <span>Neutral</span>
-              <span style="color:var(--emerald)">Extreme Greed</span>
+
+            <!-- Active Asset Mood Gauge -->
+            <div class="s-gauge-wrap">
+              <div class="s-gauge-header">
+                <span class="s-gauge-title" id="asset-gauge-title">BTC-PERP Sentiment</span>
+                <span class="s-gauge-value" id="asset-sentiment-pct-label" style="color:var(--emerald)">🟢 Bullish 68%</span>
+              </div>
+              <div class="s-gauge-bar">
+                <div class="s-gauge-needle" id="asset-sentiment-needle" style="left:68%;"></div>
+              </div>
+              <div class="s-gauge-labels">
+                <span style="color:var(--red)">Extreme Fear</span>
+                <span>Neutral</span>
+                <span style="color:var(--emerald)">Extreme Greed</span>
+              </div>
             </div>
           </div>
           <div class="s-sources-grid">

@@ -837,6 +837,13 @@ body {
 ============================================================ */
 .sentiment-body { padding: 0.875rem; display: flex; flex-direction: column; gap: 1rem; flex: 1; overflow: hidden; }
 
+/* Gauges Container */
+.s-gauges-container { display: flex; flex-direction: column; gap: 1rem; }
+@media (min-width: 1200px) {
+  .s-gauges-container { flex-direction: row; gap: 1.25rem; }
+  .s-gauge-wrap { flex: 1; min-width: 0; }
+}
+
 /* Gauge */
 .s-gauge-wrap { display: flex; flex-direction: column; gap: 0.35rem; }
 .s-gauge-header { display: flex; justify-content: space-between; align-items: center; }
