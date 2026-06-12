@@ -14,20 +14,47 @@
 
 <!-- ===== TELEGRAM MODAL ===== -->
 <div class="modal-overlay" id="tg-modal">
-  <div class="modal-box">
+  <div class="modal-box" style="width:520px;">
+    <button onclick="document.getElementById('tg-modal').classList.remove('open')"
+      style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;">✕</button>
+
     <div class="modal-title"><span>✈️</span> Telegram Alert Setup</div>
-    <div class="modal-sub">Receive live alpha signals on Telegram — @yashbaing</div>
-    <div class="form-group">
-      <label class="form-label">Bot Token (from @BotFather)</label>
-      <input class="form-input" id="tg-bot-token" type="password" placeholder="5521234:AAFsample…">
-    </div>
-    <div class="form-group">
-      <label class="form-label">Your Chat ID</label>
-      <input class="form-input" id="tg-chat-id" type="text" placeholder="987654321">
-      <div id="tg-chat-id-warn" style="display:none;color:var(--red);font-size:0.68rem;font-weight:700;margin-top:0.35rem;">
-        ⚠️ Do NOT enter @username for personal chats. Enter your numeric ID from @userinfobot (e.g., 987654321) and start the bot first!
+    <div class="modal-sub">Get live alpha signals sent directly to your Telegram — follow the steps below</div>
+
+    <!-- STEP 1 -->
+    <div style="background:rgba(6,182,212,0.06);border:1px solid rgba(6,182,212,0.2);border-radius:var(--r-lg);padding:1rem;margin-bottom:1rem;">
+      <div style="font-size:0.7rem;font-weight:800;color:var(--cyan);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.6rem;">
+        Step 1 — Create Your Bot
+      </div>
+      <p style="font-size:0.75rem;color:var(--text-secondary);line-height:1.5;">
+        Open Telegram → search <strong style="color:var(--text-primary)">@BotFather</strong> → send <code style="background:rgba(255,255,255,0.08);padding:0.1rem 0.3rem;border-radius:4px;">/newbot</code> → follow prompts → copy the <strong style="color:var(--cyan)">Bot Token</strong> it gives you.
+      </p>
+      <div class="form-group" style="margin-top:0.75rem;margin-bottom:0;">
+        <label class="form-label">Bot Token</label>
+        <input class="form-input" id="tg-bot-token" type="password" placeholder="1234567890:AAFxxxxxxxxxxxxxxxxxxxxxxxxxxxxxxx">
       </div>
     </div>
+
+    <!-- STEP 2 -->
+    <div style="background:rgba(16,185,129,0.06);border:1px solid rgba(16,185,129,0.2);border-radius:var(--r-lg);padding:1rem;margin-bottom:1rem;">
+      <div style="font-size:0.7rem;font-weight:800;color:var(--emerald);text-transform:uppercase;letter-spacing:0.1em;margin-bottom:0.6rem;">
+        Step 2 — Get Your Chat ID (Auto-Detect)
+      </div>
+      <p style="font-size:0.75rem;color:var(--text-secondary);line-height:1.5;margin-bottom:0.75rem;">
+        First, <strong style="color:var(--text-primary)">open Telegram → search your new bot → click START</strong>. Then click the button below to auto-detect your Chat ID:
+      </p>
+      <button class="btn-secondary" id="btn-tg-detect" style="width:100%;margin-bottom:0.75rem;">🔍 Auto-Detect My Chat ID</button>
+      <div id="tg-detect-status" style="display:none;font-size:0.72rem;padding:0.5rem 0.75rem;border-radius:var(--r-md);margin-bottom:0.75rem;"></div>
+      <div class="form-group" style="margin-bottom:0;">
+        <label class="form-label">Chat ID <span style="color:var(--text-muted);font-weight:400">(auto-filled above, or enter manually)</span></label>
+        <input class="form-input" id="tg-chat-id" type="text" placeholder="Will be auto-filled…">
+        <div id="tg-chat-id-warn" style="display:none;color:var(--red);font-size:0.68rem;font-weight:700;margin-top:0.35rem;">
+          ⚠️ Enter the numeric ID (e.g. 987654321), NOT your @username.
+        </div>
+      </div>
+    </div>
+
+    <!-- TOGGLE -->
     <div class="toggle-row">
       <div>
         <div class="toggle-label">Enable Live Alerts</div>
@@ -38,21 +65,15 @@
         <span class="switch-slider"></span>
       </label>
     </div>
+
+    <!-- ACTIONS -->
     <div class="modal-actions">
-      <button class="btn-secondary" id="btn-tg-test">Send Test</button>
-      <button class="btn-primary" id="btn-tg-save">Save &amp; Enable</button>
+      <button class="btn-secondary" id="btn-tg-test">📨 Send Test</button>
+      <button class="btn-primary" id="btn-tg-save">✅ Save &amp; Enable</button>
     </div>
-    <button class="btn-secondary" style="width:100%;margin-top:0.5rem;" id="btn-tg-guide">📖 Quick Setup Guide</button>
-    <div class="setup-guide" id="tg-guide">
-      <p><strong>Step 1:</strong> Search <code>@BotFather</code> on Telegram → send <code>/newbot</code> → follow prompts and copy the **Bot Token**.</p>
-      <p style="margin-top:0.5rem"><strong>Step 2:</strong> Search <code>@userinfobot</code> on Telegram → send <code>/start</code> → copy the numeric **Id** (e.g., <code>987654321</code>). Do NOT use your username `@username`.</p>
-      <p style="margin-top:0.5rem"><strong>Step 3:</strong> **CRITICAL**: Open a chat with your new bot and click **Start** (or send a message). Bots cannot message you unless you start the chat first!</p>
-      <p style="margin-top:0.5rem;color:var(--amber)">⚠️ <strong>Browser Shield Warning:</strong> Content blockers or Brave Shield can block direct API calls to <code>api.telegram.org</code>. If you get a connection error or no text, disable shields/adblocker for this site.</p>
-    </div>
-    <button onclick="document.getElementById('tg-modal').classList.remove('open')"
-      style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;">✕</button>
   </div>
 </div>
+
 
 <div class="app-shell">
 

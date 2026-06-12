@@ -1612,34 +1612,32 @@ function sendTelegramAlert(opp) {
 }
 
 function initTelegramModal() {
-  const tokenIn  = document.getElementById('tg-bot-token');
-  const chatIdIn = document.getElementById('tg-chat-id');
-  const enableCb = document.getElementById('tg-enable');
-  const saveBtn  = document.getElementById('btn-tg-save');
-  const testBtn  = document.getElementById('btn-tg-test');
-  const guide    = document.getElementById('tg-guide');
-  const guideBtn = document.getElementById('btn-tg-guide');
-  const pill     = document.getElementById('tg-sidebar-pill');
-  const pillLabel= document.getElementById('tg-pill-label');
-  const dot      = document.getElementById('tg-topbar-dot');
+  const tokenIn   = document.getElementById('tg-bot-token');
+  const chatIdIn  = document.getElementById('tg-chat-id');
+  const enableCb  = document.getElementById('tg-enable');
+  const saveBtn   = document.getElementById('btn-tg-save');
+  const testBtn   = document.getElementById('btn-tg-test');
+  const detectBtn = document.getElementById('btn-tg-detect');
+  const statusEl  = document.getElementById('tg-detect-status');
+  const warnEl    = document.getElementById('tg-chat-id-warn');
+  const pill      = document.getElementById('tg-sidebar-pill');
+  const pillLabel = document.getElementById('tg-pill-label');
+  const dot       = document.getElementById('tg-topbar-dot');
 
-  const warnEl = document.getElementById('tg-chat-id-warn');
-  function checkChatIdWarning() {
-    const val = chatIdIn.value.trim();
-    if (val.startsWith('@')) {
-      if (warnEl) warnEl.style.display = 'block';
-    } else {
-      if (warnEl) warnEl.style.display = 'none';
-    }
-  }
-
-  tokenIn.value  = localStorage.getItem('tg-bot-token') || '';
-  chatIdIn.value = localStorage.getItem('tg-chat-id')   || '';
+  // Load saved values
+  tokenIn.value    = localStorage.getItem('tg-bot-token') || '';
+  chatIdIn.value   = localStorage.getItem('tg-chat-id')   || '';
   enableCb.checked = localStorage.getItem('tg-enable') === 'true';
 
+  // Warn if @username entered
+  function checkChatIdWarning() {
+    const val = chatIdIn.value.trim();
+    if (warnEl) warnEl.style.display = val.startsWith('@') ? 'block' : 'none';
+  }
   checkChatIdWarning();
   chatIdIn.addEventListener('input', checkChatIdWarning);
 
+  // Sidebar pill refresh
   function refreshTgUI() {
     const on = localStorage.getItem('tg-enable') === 'true';
     pill.className = 'tg-status-pill ' + (on ? 'on' : 'off');
@@ -1648,34 +1646,139 @@ function initTelegramModal() {
   }
   refreshTgUI();
 
-  guideBtn?.addEventListener('click', () => guide?.classList.toggle('open'));
+  // Helper to show status inside modal
+  function showStatus(msg, type) {
+    if (!statusEl) return;
+    const colors = {
+      ok:    'background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:var(--emerald)',
+      error: 'background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:var(--red)',
+      info:  'background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.3);color:var(--cyan)'
+    };
+    statusEl.style.cssText = (colors[type] || colors.info) + ';display:block;font-size:0.72rem;padding:0.5rem 0.75rem;border-radius:var(--r-md);margin-bottom:0.75rem;';
+    statusEl.textContent = msg;
+  }
 
+  // ── AUTO-DETECT CHAT ID via getUpdates ──────────────────────
+  detectBtn?.addEventListener('click', async () => {
+    const t = tokenIn.value.trim();
+    if (!t) {
+      showStatus('⚠️ Enter your Bot Token first (Step 1).', 'error');
+      return;
+    }
+    detectBtn.textContent = '🔄 Detecting…';
+    detectBtn.disabled = true;
+    showStatus('⏳ Checking for messages sent to your bot…', 'info');
+
+    try {
+      const res  = await fetch(`https://api.telegram.org/bot${t}/getUpdates?limit=10&allowed_updates=message`);
+      const data = await res.json();
+
+      if (!data.ok) {
+        // Token is wrong
+        showStatus(`❌ Bad token: ${data.description}`, 'error');
+        detectBtn.textContent = '🔍 Auto-Detect My Chat ID';
+        detectBtn.disabled = false;
+        return;
+      }
+
+      const updates = data.result || [];
+      if (!updates.length) {
+        showStatus('⚠️ No messages found. Open Telegram → find your bot → tap START, then click Detect again.', 'error');
+        detectBtn.textContent = '🔍 Auto-Detect My Chat ID';
+        detectBtn.disabled = false;
+        return;
+      }
+
+      // Pick the last message's sender chat_id
+      const lastUpdate = updates[updates.length - 1];
+      const chatId = (lastUpdate.message?.chat?.id || lastUpdate.channel_post?.chat?.id || '').toString();
+      const firstName = lastUpdate.message?.from?.first_name || 'You';
+
+      if (!chatId) {
+        showStatus('⚠️ Could not extract chat ID from update. Send /start to your bot and try again.', 'error');
+      } else {
+        chatIdIn.value = chatId;
+        showStatus(`✅ Chat ID detected: ${chatId} (${firstName}) — auto-filled below!`, 'ok');
+      }
+
+    } catch (e) {
+      showStatus(`❌ Network error: ${e.message}. Check your internet or disable adblocker.`, 'error');
+    }
+
+    detectBtn.textContent = '🔍 Auto-Detect My Chat ID';
+    detectBtn.disabled = false;
+    checkChatIdWarning();
+  });
+
+  // ── SAVE ──────────────────────────────────────────────────────
   saveBtn.addEventListener('click', () => {
-    localStorage.setItem('tg-bot-token', tokenIn.value.trim());
-    localStorage.setItem('tg-chat-id',   chatIdIn.value.trim());
+    const t = tokenIn.value.trim();
+    const c = chatIdIn.value.trim();
+    if (!t || !c) {
+      showToast({ type:'error', icon:'❌', title:'Missing fields', msg:'Complete both Step 1 (Bot Token) and Step 2 (Chat ID).' });
+      return;
+    }
+    localStorage.setItem('tg-bot-token', t);
+    localStorage.setItem('tg-chat-id',   c);
     localStorage.setItem('tg-enable',    enableCb.checked ? 'true' : 'false');
     document.getElementById('tg-modal').classList.remove('open');
     refreshTgUI();
-    showToast({ type:'info', icon:'✈️', title:'Telegram Configured', msg: enableCb.checked ? 'Alerts active! You\'ll receive alpha signals.' : 'Alerts disabled.' });
+    showToast({ type:'info', icon:'✈️', title:'Telegram Configured', msg: enableCb.checked ? '✅ Alerts active! Alpha signals will be sent to your Telegram.' : 'Alerts disabled.' });
   });
 
+  // ── SEND TEST ──────────────────────────────────────────────────
   testBtn.addEventListener('click', () => {
-    const t = tokenIn.value.trim(), c = chatIdIn.value.trim();
-    if (!t || !c) { showToast({ type:'error', icon:'❌', title:'Missing credentials', msg:'Enter Bot Token and Chat ID first.' }); return; }
-    testBtn.textContent = 'Sending…'; testBtn.disabled = true;
+    const t = tokenIn.value.trim();
+    const c = chatIdIn.value.trim();
+    if (!t) { showToast({ type:'error', icon:'❌', title:'Missing Bot Token', msg:'Enter your Bot Token in Step 1 first.' }); return; }
+    if (!c) { showToast({ type:'error', icon:'❌', title:'Missing Chat ID', msg:'Use Auto-Detect (Step 2) or enter your numeric Chat ID.' }); return; }
+
+    testBtn.textContent = '⏳ Sending…';
+    testBtn.disabled = true;
+
     fetch(`https://api.telegram.org/bot${t}/sendMessage`, {
-      method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ chat_id:c, text:`⚡ <b>Aegis Quantum — Connection Test</b>\n\nYour Telegram integration is working! Alpha signals will arrive here.\n\n@yashbaing · ${escapeHTML(new Date().toLocaleString())}`, parse_mode:'HTML' })
-    }).then(r => r.json()).then(d => {
-      testBtn.textContent = 'Send Test'; testBtn.disabled = false;
-      if (d.ok) showToast({ type:'alpha', icon:'✅', title:'Test message sent!', msg:'Check your Telegram.' });
-      else showToast({ type:'error', icon:'❌', title:'Telegram API error', msg: d.description });
-    }).catch(e => {
-      testBtn.textContent = 'Send Test'; testBtn.disabled = false;
-      showToast({ type:'error', icon:'❌', title:'Network error', msg: e.message });
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({
+        chat_id: c,
+        parse_mode: 'HTML',
+        text: `⚡ <b>Aegis Quantum — Connection Test ✅</b>\n\nYour Telegram integration is working correctly!\n\nAlpha signals and market insights will now be delivered here automatically.\n\n<i>${escapeHTML(new Date().toLocaleString())}</i>`
+      })
+    })
+    .then(r => r.json())
+    .then(d => {
+      testBtn.textContent = '📨 Send Test';
+      testBtn.disabled = false;
+      if (d.ok) {
+        showToast({ type:'alpha', icon:'✅', title:'Test message sent!', msg:'Check your Telegram now.' });
+        showStatus('✅ Test message delivered successfully! You should see it in Telegram.', 'ok');
+      } else {
+        // Provide specific helpful messages for common errors
+        let hint = d.description || 'Unknown error';
+        if (hint.includes('chat not found')) {
+          hint = 'Chat not found. Make sure you sent /start to your bot in Telegram before testing!';
+        } else if (hint.includes('Unauthorized')) {
+          hint = 'Invalid Bot Token. Double-check the token you copied from @BotFather.';
+        } else if (hint.includes('blocked')) {
+          hint = 'You have blocked the bot. Open Telegram, find your bot, and click Unblock or Start.';
+        }
+        showToast({ type:'error', icon:'❌', title:'Telegram API error', msg: hint });
+        showStatus(`❌ ${hint}`, 'error');
+      }
+    })
+    .catch(e => {
+      testBtn.textContent = '📨 Send Test';
+      testBtn.disabled = false;
+      let hint = e.message;
+      if (hint.includes('Failed to fetch') || hint.includes('NetworkError')) {
+        hint = 'Network blocked. Disable your adblocker / Brave Shield for this page and try again.';
+      }
+      showToast({ type:'error', icon:'❌', title:'Network error', msg: hint });
+      showStatus(`❌ ${hint}`, 'error');
     });
   });
 
+  // Close modal when clicking backdrop
   document.getElementById('btn-tg-config-opp')?.addEventListener('click', () => document.getElementById('tg-modal').classList.add('open'));
   document.getElementById('tg-modal').addEventListener('click', e => {
     if (e.target === e.currentTarget) e.currentTarget.classList.remove('open');
