@@ -1623,9 +1623,22 @@ function initTelegramModal() {
   const pillLabel= document.getElementById('tg-pill-label');
   const dot      = document.getElementById('tg-topbar-dot');
 
+  const warnEl = document.getElementById('tg-chat-id-warn');
+  function checkChatIdWarning() {
+    const val = chatIdIn.value.trim();
+    if (val.startsWith('@')) {
+      if (warnEl) warnEl.style.display = 'block';
+    } else {
+      if (warnEl) warnEl.style.display = 'none';
+    }
+  }
+
   tokenIn.value  = localStorage.getItem('tg-bot-token') || '';
   chatIdIn.value = localStorage.getItem('tg-chat-id')   || '';
   enableCb.checked = localStorage.getItem('tg-enable') === 'true';
+
+  checkChatIdWarning();
+  chatIdIn.addEventListener('input', checkChatIdWarning);
 
   function refreshTgUI() {
     const on = localStorage.getItem('tg-enable') === 'true';

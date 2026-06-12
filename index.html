@@ -24,6 +24,9 @@
     <div class="form-group">
       <label class="form-label">Your Chat ID</label>
       <input class="form-input" id="tg-chat-id" type="text" placeholder="987654321">
+      <div id="tg-chat-id-warn" style="display:none;color:var(--red);font-size:0.68rem;font-weight:700;margin-top:0.35rem;">
+        ⚠️ Do NOT enter @username for personal chats. Enter your numeric ID from @userinfobot (e.g., 987654321) and start the bot first!
+      </div>
     </div>
     <div class="toggle-row">
       <div>
@@ -41,9 +44,10 @@
     </div>
     <button class="btn-secondary" style="width:100%;margin-top:0.5rem;" id="btn-tg-guide">📖 Quick Setup Guide</button>
     <div class="setup-guide" id="tg-guide">
-      <p><strong>Step 1:</strong> Telegram → <code>@BotFather</code> → <code>/newbot</code> → copy token.</p>
-      <p style="margin-top:0.5rem"><strong>Step 2:</strong> Search <code>@userinfobot</code> → <code>/start</code> → copy the <code>Id</code> number.</p>
-      <p style="margin-top:0.5rem"><strong>Step 3:</strong> Start a chat with your bot first, then paste credentials here.</p>
+      <p><strong>Step 1:</strong> Search <code>@BotFather</code> on Telegram → send <code>/newbot</code> → follow prompts and copy the **Bot Token**.</p>
+      <p style="margin-top:0.5rem"><strong>Step 2:</strong> Search <code>@userinfobot</code> on Telegram → send <code>/start</code> → copy the numeric **Id** (e.g., <code>987654321</code>). Do NOT use your username `@username`.</p>
+      <p style="margin-top:0.5rem"><strong>Step 3:</strong> **CRITICAL**: Open a chat with your new bot and click **Start** (or send a message). Bots cannot message you unless you start the chat first!</p>
+      <p style="margin-top:0.5rem;color:var(--amber)">⚠️ <strong>Browser Shield Warning:</strong> Content blockers or Brave Shield can block direct API calls to <code>api.telegram.org</code>. If you get a connection error or no text, disable shields/adblocker for this site.</p>
     </div>
     <button onclick="document.getElementById('tg-modal').classList.remove('open')"
       style="position:absolute;top:1rem;right:1rem;background:none;border:none;color:var(--text-muted);font-size:1.2rem;cursor:pointer;">✕</button>
