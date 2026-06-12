@@ -27,8 +27,12 @@ const YAHOO_SYMBOLS = [
   'SPY','QQQ','^VIX','^DJI','^IXIC'
 ];
 
-// CORS proxy for Yahoo Finance
-const YAHOO_PROXY = 'https://api.allorigins.win/raw?url=';
+// CORS proxies for Yahoo Finance (tried in order until one works)
+const YAHOO_PROXIES = [
+  'https://corsproxy.io/?',
+  'https://api.allorigins.win/raw?url=',
+  'https://api.codetabs.com/v1/proxy?quest=',
+];
 
 // Stock screener config
 const STOCK_SCREENER_LIST = [
@@ -394,34 +398,42 @@ async function fetchBinanceKlines(assetKey, tf = '15m') {
 }
 
 // ============================================================
-// REAL STOCK DATA — YAHOO FINANCE
+// REAL STOCK DATA — YAHOO FINANCE (multi-proxy with retry)
 // ============================================================
-async function fetchAllStockData() {
-  const symbols = YAHOO_SYMBOLS.join(',');
-  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketVolume,marketCap,regularMarketDayHigh,regularMarketDayLow,regularMarketOpen,preMarketPrice,postMarketPrice,marketState`;
-
-  let quotes = [];
-
-  // Try direct first (sometimes works)
+async function fetchYahooURL(url) {
+  // 1) Try direct (works in some environments)
   try {
-    const res = await fetch(url, { headers: { 'Accept': 'application/json' } });
+    const res = await fetch(url, { signal: AbortSignal.timeout(4000) });
     if (res.ok) {
       const data = await res.json();
-      quotes = data?.quoteResponse?.result || [];
+      if (data?.quoteResponse?.result?.length || data?.chart?.result?.length) return data;
     }
   } catch (_) {}
 
-  // Fallback: CORS proxy
-  if (!quotes.length) {
+  // 2) Try each CORS proxy in order
+  for (const proxy of YAHOO_PROXIES) {
     try {
-      const proxyUrl = YAHOO_PROXY + encodeURIComponent(url);
-      const res = await fetch(proxyUrl);
+      const proxyUrl = proxy + encodeURIComponent(url);
+      const res = await fetch(proxyUrl, { signal: AbortSignal.timeout(5000) });
       if (res.ok) {
-        const data = await res.json();
-        quotes = data?.quoteResponse?.result || [];
+        const text = await res.text();
+        const data = JSON.parse(text);
+        if (data?.quoteResponse?.result?.length || data?.chart?.result?.length) return data;
       }
     } catch (_) {}
   }
+  return null;
+}
+
+async function fetchAllStockData() {
+  setStockLoadingState(true);
+  const symbols = YAHOO_SYMBOLS.join(',');
+
+  // Yahoo Finance v6 (crumb-free, more reliable from proxies)
+  const url = `https://query1.finance.yahoo.com/v7/finance/quote?symbols=${symbols}&fields=regularMarketPrice,regularMarketChangePercent,regularMarketVolume,marketCap,regularMarketDayHigh,regularMarketDayLow,regularMarketOpen,preMarketPrice,postMarketPrice,preMarketChangePercent,postMarketChangePercent,marketState&formatted=false&lang=en-US&region=US`;
+
+  const data = await fetchYahooURL(url);
+  const quotes = data?.quoteResponse?.result || [];
 
   if (quotes.length) {
     processYahooQuotes(quotes);
@@ -431,6 +443,25 @@ async function fetchAllStockData() {
     renderIndicesStrip();
     updateSidebarPrices();
     updateTopbar();
+    setStockLoadingState(false);
+    console.log(`[Stock] Live data OK — ${quotes.length} quotes loaded.`);
+  } else {
+    console.warn('[Stock] All Yahoo Finance sources failed — showing last known / simulated.');
+    setStockLoadingState(false, true);
+  }
+}
+
+function setStockLoadingState(loading, failed = false) {
+  const badge = document.getElementById('data-source-badge');
+  const overlay = document.getElementById('stock-loading-overlay');
+  if (loading) {
+    if (badge) { badge.textContent = '⏳ Fetching live data…'; badge.style.color = 'var(--cyan)'; }
+    if (overlay) { overlay.style.display = 'flex'; overlay.innerHTML = '<div style="text-align:center"><div style="font-size:1.2rem;margin-bottom:0.4rem;">⏳</div><div style="font-size:0.72rem;color:var(--cyan);">Fetching live stock prices…</div></div>'; }
+  } else if (failed) {
+    if (badge) { badge.textContent = '⚠️ Proxy unavailable — last known'; badge.style.color = 'var(--amber)'; }
+    if (overlay) { overlay.style.display = 'flex'; overlay.innerHTML = '<div style="text-align:center"><div style="font-size:1.2rem;margin-bottom:0.4rem;">⚠️</div><div style="font-size:0.72rem;color:var(--amber);">Live proxy unavailable. Prices may be delayed.</div><button onclick="fetchAllStockData()" style="margin-top:0.5rem;padding:0.3rem 0.8rem;border-radius:20px;border:1px solid var(--amber);background:transparent;color:var(--amber);font-size:0.7rem;cursor:pointer;">Retry</button></div>'; }
+  } else {
+    if (overlay) overlay.style.display = 'none';
   }
 }
 
@@ -468,19 +499,7 @@ async function fetchStockKlines(symbol, tf = '15m') {
   const range    = rangeMap[tf]    || '5d';
 
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}&includePrePost=true`;
-
-  let result = null;
-  try {
-    const res = await fetch(url);
-    if (res.ok) result = await res.json();
-  } catch (_) {}
-
-  if (!result) {
-    try {
-      const res = await fetch(YAHOO_PROXY + encodeURIComponent(url));
-      if (res.ok) result = await res.json();
-    } catch (_) {}
-  }
+  const result = await fetchYahooURL(url);
 
   if (!result) return false;
 
@@ -514,11 +533,17 @@ async function fetchStockKlines(symbol, tf = '15m') {
 function updateDataSourceBadge() {
   const badge = document.getElementById('data-source-badge');
   if (!badge) return;
-  if (STATE.cryptoDataLive) {
-    badge.textContent = '⚡ Live Binance + Yahoo';
+  if (STATE.cryptoDataLive && STATE.stockDataLive) {
+    badge.textContent = '⚡ Live Binance + Yahoo Finance';
     badge.style.color = 'var(--emerald)';
+  } else if (STATE.cryptoDataLive) {
+    badge.textContent = '⚡ Live Crypto · Stocks Delayed';
+    badge.style.color = 'var(--cyan)';
+  } else if (STATE.stockDataLive) {
+    badge.textContent = '📈 Live Stocks · Crypto Simulated';
+    badge.style.color = 'var(--cyan)';
   } else {
-    badge.textContent = '⚙ Simulated Prices';
+    badge.textContent = '⚙ Simulated — No Live Feed';
     badge.style.color = 'var(--amber)';
   }
 }
@@ -1981,11 +2006,10 @@ async function init() {
   setInterval(generateCEXOrderbook, 1200);
   setInterval(updateETClock,        1000);  // live ET clock
   setInterval(updateMarketStatusUI, 30000); // market status refresh
-  setInterval(() => {
-    fetchAllStockData(); // refresh stocks every 30s (Yahoo Finance respects market hours)
-    renderStocksSection();
-    renderIndicesStrip();
-  }, 30000);
+  // Refresh stocks every 15s for near-real-time quotes
+  setInterval(async () => {
+    await fetchAllStockData();
+  }, 15000);
   setInterval(() => {
     if (STATE.agentsRunning && Math.random() < 0.75) generateAlpha();
   }, 16000);
