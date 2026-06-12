@@ -1302,13 +1302,34 @@ const REASONS_SELL = [
 ];
 
 function generateAlpha(customAsset = null, forceAction = null) {
-  const allKeys = Object.keys(STATE.assets).filter(k => !['SPY','QQQ','^DJI','^VIX','^IXIC'].includes(k));
-  const key   = customAsset || allKeys[Math.floor(Math.random() * allKeys.length)];
+  const ms = getMarketStatus();
+  const marketOpen = ['open', 'pre-market', 'after-hours'].includes(ms.status);
+
+  // Separate keys: crypto is always allowed; stocks only when market is open
+  const cryptoKeys = Object.keys(STATE.assets).filter(k => ['perp','dex','cex'].includes(STATE.assets[k].type));
+  const stockKeys  = Object.keys(STATE.assets).filter(k => ['stock'].includes(STATE.assets[k].type) && !['SPY','QQQ','^DJI','^VIX','^IXIC'].includes(k));
+
+  let eligibleKeys;
+  if (customAsset) {
+    const a = STATE.assets[customAsset];
+    // If custom asset is a stock and market is closed, refuse
+    if (a && ['stock','index'].includes(a.type) && !marketOpen) {
+      showToast({ type:'warning', icon:'🔴', title:'Market Closed', msg:`Cannot generate ${customAsset} signal — US market is closed.` });
+      return;
+    }
+    eligibleKeys = [customAsset];
+  } else {
+    eligibleKeys = marketOpen ? [...cryptoKeys, ...stockKeys] : cryptoKeys;
+    if (!eligibleKeys.length) return;
+  }
+
+  const key   = customAsset || eligibleKeys[Math.floor(Math.random() * eligibleKeys.length)];
   const asset = STATE.assets[key];
   if (!asset) return;
+
   const isBuy  = forceAction ? forceAction === 'BUY' : Math.random() > 0.42;
   const action = isBuy ? 'BUY' : 'SELL';
-  const dec = asset.dec;
+  const dec    = asset.dec;
   const entry  = asset.currentPrice;
   const target = isBuy ? entry * (1 + 0.065 + Math.random() * 0.04) : entry * (1 - 0.055 - Math.random() * 0.03);
   const stop   = isBuy ? entry * (1 - 0.025 - Math.random() * 0.01) : entry * (1 + 0.025 + Math.random() * 0.01);
@@ -1317,10 +1338,15 @@ function generateAlpha(customAsset = null, forceAction = null) {
   const reason  = reasons[Math.floor(Math.random() * reasons.length)];
   const rr = Math.abs(target - entry) / Math.abs(stop - entry);
 
+  // Tag as crypto-only if no stock access
+  const marketNote = ['stock','index'].includes(asset.type) && ms.status !== 'open' ? ` [${ms.label}]` : '';
+
   const opp = {
     time: new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
-    asset: asset.symbol, action, entry, target, stop, conf, reason,
-    rr: rr.toFixed(1), dec
+    asset: asset.symbol, action, entry, target, stop, conf,
+    reason: reason + marketNote,
+    rr: rr.toFixed(1), dec,
+    assetType: asset.type,
   };
 
   STATE.opportunities.unshift(opp);
@@ -1342,19 +1368,40 @@ function updateAgentSignalCounts() {
 }
 
 function renderOpportunities() {
+  const ms = getMarketStatus();
+  const marketOpen = ['open', 'pre-market', 'after-hours'].includes(ms.status);
+
+  // Show/hide market-closed notice banner
+  const noticeBanner = document.getElementById('alpha-market-notice');
+  if (noticeBanner) {
+    if (!marketOpen) {
+      noticeBanner.style.display = 'flex';
+      noticeBanner.innerHTML = `
+        <span style="font-size:1rem;">🔴</span>
+        <span><strong>US Market Closed</strong> — Stock signals paused. Only Crypto (BTC, ETH, SOL) signals are active right now. Market opens <strong>9:30 AM ET</strong>.</span>`;
+    } else {
+      noticeBanner.style.display = 'none';
+    }
+  }
+
   const list = STATE.oppFilter === 'buy'  ? STATE.opportunities.filter(o => o.action === 'BUY') :
                STATE.oppFilter === 'sell' ? STATE.opportunities.filter(o => o.action === 'SELL') :
                STATE.opportunities;
 
   let html = '';
   if (!list.length) {
-    html = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:2rem;">No signals yet — agents are computing…</td></tr>`;
+    html = `<tr><td colspan="8" style="text-align:center;color:var(--text-muted);padding:2rem;">No signals yet — agents are scanning crypto markets…</td></tr>`;
   } else {
     list.forEach((o, idx) => {
       const bc = o.action === 'BUY' ? 'ab-buy' : 'ab-sell';
+      const typeLabel = { perp:'Perp', dex:'DEX', cex:'CEX', stock:'Stock', index:'Index' }[o.assetType] || o.assetType || '';
+      const typeColor = ['stock','index'].includes(o.assetType) ? 'var(--amber)' : 'var(--cyan)';
       html += `<tr class="${idx === 0 ? 'new-row' : ''}">
         <td class="text-muted text-mono" style="font-size:0.7rem;">${o.time}</td>
-        <td style="font-weight:700;color:var(--cyan);">${o.asset}</td>
+        <td>
+          <span style="font-weight:700;color:var(--cyan);">${o.asset}</span>
+          ${typeLabel ? `<span style="display:inline-block;margin-left:4px;font-size:0.55rem;padding:0.05rem 0.3rem;border-radius:3px;background:${typeColor}18;color:${typeColor};border:1px solid ${typeColor}40;font-weight:700;">${typeLabel}</span>` : ''}
+        </td>
         <td><span class="action-badge ${bc}">${o.action}</span></td>
         <td class="text-mono" style="font-weight:700;">$${o.target.toFixed(o.dec)}</td>
         <td class="text-mono" style="color:var(--red);">$${o.stop.toFixed(o.dec)}</td>
@@ -1376,7 +1423,11 @@ function updateAlphaBadge() {
   document.getElementById('tb-alpha').textContent = STATE.opportunities.length + ' Active';
 }
 
-for (let i = 0; i < 6; i++) generateAlpha();
+// Seed initial alpha signals — crypto only (stocks may be market-closed)
+const _cryptoSeeds = Object.keys(STATE.assets).filter(k => STATE.assets[k].type === 'perp');
+for (let i = 0; i < 6; i++) {
+  generateAlpha(_cryptoSeeds[i % _cryptoSeeds.length]);
+}
 
 // ============================================================
 // MULTI-AGENT TERMINAL
