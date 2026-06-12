@@ -1579,6 +1579,14 @@ function showToast({ type='info', icon='ℹ️', title, msg }) {
 // ============================================================
 // TELEGRAM
 // ============================================================
+function escapeHTML(str) {
+  if (!str) return '';
+  return str.toString()
+    .replace(/&/g, '&amp;')
+    .replace(/</g, '&lt;')
+    .replace(/>/g, '&gt;');
+}
+
 function sendTelegramAlert(opp) {
   if (localStorage.getItem('tg-enable') !== 'true') return;
   const token  = localStorage.getItem('tg-bot-token');
@@ -1586,15 +1594,20 @@ function sendTelegramAlert(opp) {
   if (!token || !chatId) return;
 
   const emoji = opp.action === 'BUY' ? '🟢' : '🔴';
-  const text = `${emoji} *Aegis Quantum Alpha Signal*\n\n`
-    + `*Asset:* ${opp.asset}\n*Signal:* ${opp.action}\n`
-    + `*Target:* $${opp.target.toFixed(opp.dec)}\n*Stop:* $${opp.stop.toFixed(opp.dec)}\n`
-    + `*R/R:* 1:${opp.rr}\n*Confidence:* ${opp.conf}%\n`
-    + `*Reason:* ${opp.reason}\n\nCc: @yashbaing\n_${new Date().toLocaleString()}_`;
+  const text = `${emoji} <b>Aegis Quantum Alpha Signal</b>\n\n`
+    + `<b>Asset:</b> ${escapeHTML(opp.asset)}\n`
+    + `<b>Signal:</b> ${escapeHTML(opp.action)}\n`
+    + `<b>Target:</b> $${opp.target.toFixed(opp.dec)}\n`
+    + `<b>Stop:</b> $${opp.stop.toFixed(opp.dec)}\n`
+    + `<b>R/R:</b> 1:${opp.rr}\n`
+    + `<b>Confidence:</b> ${opp.conf}%\n`
+    + `<b>Reason:</b> ${escapeHTML(opp.reason)}\n\n`
+    + `Cc: @yashbaing\n`
+    + `<i>${escapeHTML(new Date().toLocaleString())}</i>`;
 
   fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
     method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ chat_id:chatId, text, parse_mode:'Markdown' })
+    body: JSON.stringify({ chat_id:chatId, text, parse_mode:'HTML' })
   }).catch(e => console.error('Telegram send failed:', e));
 }
 
@@ -1639,7 +1652,7 @@ function initTelegramModal() {
     testBtn.textContent = 'Sending…'; testBtn.disabled = true;
     fetch(`https://api.telegram.org/bot${t}/sendMessage`, {
       method:'POST', headers:{'Content-Type':'application/json'},
-      body: JSON.stringify({ chat_id:c, text:`⚡ *Aegis Quantum — Connection Test*\n\nYour Telegram integration is working! Alpha signals will arrive here.\n\n@yashbaing · ${new Date().toLocaleString()}`, parse_mode:'Markdown' })
+      body: JSON.stringify({ chat_id:c, text:`⚡ <b>Aegis Quantum — Connection Test</b>\n\nYour Telegram integration is working! Alpha signals will arrive here.\n\n@yashbaing · ${escapeHTML(new Date().toLocaleString())}`, parse_mode:'HTML' })
     }).then(r => r.json()).then(d => {
       testBtn.textContent = 'Send Test'; testBtn.disabled = false;
       if (d.ok) showToast({ type:'alpha', icon:'✅', title:'Test message sent!', msg:'Check your Telegram.' });
