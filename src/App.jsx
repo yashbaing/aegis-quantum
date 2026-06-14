@@ -1519,7 +1519,7 @@ export default function App() {
             activeAlphaTab={activeAlphaTab}
             onChangeAlphaTab={setActiveAlphaTab}
             activeVeritasSubTab={activeVeritasSubTab}
-            onChangeVeritasSubTab={onChangeVeritasSubTab}
+            onChangeVeritasSubTab={setActiveVeritasSubTab}
             veritasMetrics={veritasMetrics}
             marketStatus={marketStatusInfo.status}
             onOpenTelegramModal={() => setTgModalOpen(true)}
