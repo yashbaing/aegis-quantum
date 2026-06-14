@@ -490,6 +490,25 @@
               <div class="confidence-bar-track"><div class="confidence-bar-fill" id="bar-predictor" style="width:89%;background:linear-gradient(90deg,var(--amber),var(--emerald))"></div></div>
             </div>
           </div>
+
+          <div class="agent-card" data-agent="veritas">
+            <div class="ac-header">
+              <div class="ac-meta">
+                <div class="ac-icon" style="background:var(--violet-dim);color:var(--violet);">🛡️</div>
+                <span class="ac-name">Veritas — Evaluator</span>
+              </div>
+              <span class="ac-status on" id="status-veritas">● Active</span>
+            </div>
+            <div class="ac-desc">Validates signals, backtests Sharpe ratio and evaluates strategy profitability</div>
+            <div class="ac-metrics">
+              <div class="ac-metric"><span class="ac-metric-label">Win Rate</span><span class="ac-metric-value" style="color:var(--violet)" id="sigs-veritas-winrate">0.0%</span></div>
+              <div class="ac-metric"><span class="ac-metric-label">Trades</span><span class="ac-metric-value" id="sigs-veritas-count">0</span></div>
+              <div class="ac-metric"><span class="ac-metric-label">Sharpe</span><span class="ac-metric-value" id="sigs-veritas-sharpe">0.00</span></div>
+            </div>
+            <div class="confidence-bar-wrap">
+              <div class="confidence-bar-track"><div class="confidence-bar-fill" id="bar-veritas" style="width:0%;background:linear-gradient(90deg,var(--violet),var(--magenta))"></div></div>
+            </div>
+          </div>
         </div>
 
         <!-- Terminal -->
@@ -547,24 +566,41 @@
       </div>
 
       <!-- Alpha Terminal -->
-      <div class="card accent-emerald card-glow-emerald">
+      <div class="card accent-emerald card-glow-emerald" id="alpha-terminal-card">
         <div class="card-header">
-          <div class="card-title">
-            <div class="card-title-icon" style="background:var(--emerald-dim);color:var(--emerald);">🎯</div>
-            Alpha Opportunity Terminal
-            <span id="alpha-count-badge" style="font-size:0.62rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:var(--r-pill);background:var(--emerald-dim);color:var(--emerald);border:1px solid rgba(16,185,129,0.25);margin-left:0.25rem;">0</span>
+          <div style="display:flex;align-items:center;gap:0.75rem;">
+            <div class="card-title" id="alpha-terminal-title" style="cursor:pointer;" onclick="switchAlphaTab('signals')">
+              <div class="card-title-icon" style="background:var(--emerald-dim);color:var(--emerald);">🎯</div>
+              Alpha Signals
+              <span id="alpha-count-badge" style="font-size:0.62rem;font-weight:700;padding:0.1rem 0.4rem;border-radius:var(--r-pill);background:var(--emerald-dim);color:var(--emerald);border:1px solid rgba(16,185,129,0.25);margin-left:0.25rem;">0</span>
+            </div>
+            <div style="width:1px;height:14px;background:var(--border-2);"></div>
+            <div class="card-title" id="veritas-terminal-title" style="cursor:pointer;color:var(--text-secondary);opacity:0.65;" onclick="switchAlphaTab('veritas')">
+              <div class="card-title-icon" style="background:rgba(139,92,246,0.12);color:var(--violet);">🛡️</div>
+              Veritas Performance
+            </div>
           </div>
           <div class="card-actions">
-            <button class="pill-btn active" id="f-all">All</button>
-            <button class="pill-btn emerald" id="f-buy">Buy</button>
-            <button class="pill-btn" id="f-sell">Sell</button>
-            <div class="vr"></div>
-            <button class="pill-btn" id="btn-tg-config-opp" style="border-color:var(--magenta);color:var(--magenta);">✈️ Alerts</button>
+            <!-- Tabs for signals -->
+            <div id="signals-action-group" style="display:flex;align-items:center;gap:0.4rem;">
+              <button class="pill-btn active" id="f-all">All</button>
+              <button class="pill-btn emerald" id="f-buy">Buy</button>
+              <button class="pill-btn" id="f-sell">Sell</button>
+              <div class="vr"></div>
+              <button class="pill-btn" id="btn-tg-config-opp" style="border-color:var(--magenta);color:var(--magenta);">✈️ Alerts</button>
+            </div>
+            <!-- Tabs for veritas performance metrics -->
+            <div id="veritas-action-group" style="display:none;align-items:center;gap:0.4rem;">
+              <button class="pill-btn active" id="veritas-tab-stats" onclick="switchVeritasSubTab('stats')">Metrics</button>
+              <button class="pill-btn" id="veritas-tab-chart" onclick="switchVeritasSubTab('chart')">Equity Curve</button>
+              <button class="pill-btn" id="veritas-tab-trades" onclick="switchVeritasSubTab('trades')">Trade Log</button>
+            </div>
           </div>
         </div>
         <!-- Market Closed Notice Banner -->
         <div id="alpha-market-notice" style="display:none;align-items:center;gap:0.75rem;background:rgba(239,68,68,0.08);border:1px solid rgba(239,68,68,0.25);border-radius:var(--r-md);padding:0.6rem 0.875rem;margin:0 0.875rem 0.75rem;font-size:0.73rem;color:var(--text-secondary);line-height:1.45;"></div>
 
+        <!-- Live Signals View -->
         <div class="opp-wrap" id="opp-wrap">
           <table class="opp-table">
             <thead>
@@ -576,6 +612,91 @@
             </thead>
             <tbody id="opp-tbody"></tbody>
           </table>
+        </div>
+
+        <!-- Veritas Performance View -->
+        <div class="veritas-wrap" id="veritas-wrap" style="display:none;flex:1;overflow:auto;padding:0.875rem;flex-direction:column;gap:1rem;">
+          
+          <!-- SUBTAB 1: METRICS PANEL -->
+          <div id="veritas-panel-stats" style="display:flex;flex-direction:column;gap:1rem;">
+            
+            <!-- VERITAS VERDICT BANNER -->
+            <div id="veritas-verdict-banner" style="display:flex;align-items:center;justify-content:space-between;padding:0.75rem 1rem;border-radius:var(--r-md);border:1px solid rgba(139,92,246,0.3);background:rgba(139,92,246,0.05);color:var(--text-primary);transition: all 0.3s ease;">
+              <div style="display:flex;align-items:center;gap:0.6rem;">
+                <span style="font-size:1.2rem;line-height:1;">🛡️</span>
+                <div>
+                  <div style="font-size:0.75rem;font-weight:700;">Veritas Strategy Status</div>
+                  <div style="font-size:0.65rem;color:var(--text-secondary);" id="veritas-status-desc">Accumulating historical trade signals for strategy validation...</div>
+                </div>
+              </div>
+              <span class="action-badge ab-hold" id="veritas-verdict-badge">ACCUMULATING</span>
+            </div>
+
+            <!-- STATS GRID -->
+            <div style="display:grid;grid-template-columns:repeat(auto-fit, minmax(130px, 1fr));gap:0.5rem;">
+              
+              <!-- Metric: Win Rate -->
+              <div class="s-source-card" style="border-color:var(--border-1);">
+                <span class="s-source-name">Win Rate</span>
+                <span class="s-source-score" id="v-metric-winrate" style="color:var(--cyan)">0.0%</span>
+                <span class="s-source-change text-muted" id="v-metric-winrate-detail">0 Wins / 0 Losses</span>
+              </div>
+              
+              <!-- Metric: ROI -->
+              <div class="s-source-card" style="border-color:var(--border-1);">
+                <span class="s-source-name">Cumulative ROI</span>
+                <span class="s-source-score" id="v-metric-roi" style="color:var(--emerald)">+0.00%</span>
+                <span class="s-source-change text-muted" id="v-metric-roi-detail">Capital: $10,000</span>
+              </div>
+
+              <!-- Metric: Sharpe Ratio -->
+              <div class="s-source-card" style="border-color:var(--border-1);">
+                <span class="s-source-name">Sharpe Ratio</span>
+                <span class="s-source-score" id="v-metric-sharpe" style="color:var(--violet)">0.00</span>
+                <span class="s-source-change text-muted" id="v-metric-sharpe-detail">Risk-Adjusted Edge</span>
+              </div>
+
+              <!-- Metric: Max Drawdown -->
+              <div class="s-source-card" style="border-color:var(--border-1);">
+                <span class="s-source-name">Max Drawdown</span>
+                <span class="s-source-score" id="v-metric-drawdown" style="color:var(--red)">0.0%</span>
+                <span class="s-source-change text-muted" id="v-metric-drawdown-detail">Peak-to-Trough risk</span>
+              </div>
+
+              <!-- Metric: Profit Factor -->
+              <div class="s-source-card" style="border-color:var(--border-1);">
+                <span class="s-source-name">Profit Factor</span>
+                <span class="s-source-score" id="v-metric-profitfactor" style="color:var(--amber)">0.00</span>
+                <span class="s-source-change text-muted" id="v-metric-profitfactor-detail">Gross Win / Loss</span>
+              </div>
+
+            </div>
+
+          </div>
+
+          <!-- SUBTAB 2: EQUITY CURVE CHART -->
+          <div id="veritas-panel-chart" style="display:none;flex-direction:column;gap:0.5rem;height:180px;position:relative;">
+            <div style="font-size:0.68rem;color:var(--text-muted);font-weight:700;text-transform:uppercase;letter-spacing:0.08em;">Strategy Equity Curve (ROI %)</div>
+            <div style="flex:1;position:relative;background:rgba(0,0,0,0.25);border:1px solid var(--border-1);border-radius:var(--r-md);overflow:hidden;">
+              <canvas id="veritas-equity-chart" style="display:block;width:100%;height:100%;"></canvas>
+            </div>
+          </div>
+
+          <!-- SUBTAB 3: HISTORICAL TRADES LOG -->
+          <div id="veritas-panel-trades" style="display:none;flex:1;overflow:auto;">
+            <table class="opp-table" style="font-size:0.7rem;">
+              <thead>
+                <tr>
+                  <th>Closed</th><th>Asset</th><th>Type</th>
+                  <th>Entry</th><th>Exit</th><th>Outcome</th><th>Return</th>
+                </tr>
+              </thead>
+              <tbody id="veritas-trades-tbody">
+                <tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:1.5rem;">No closed trades yet. Waiting for signals to resolve.</td></tr>
+              </tbody>
+            </table>
+          </div>
+
         </div>
       </div>
     </div>
