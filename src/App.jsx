@@ -382,6 +382,9 @@ export default function App() {
 
   const wsRef = useRef(null);
   const binanceRetries = useRef(0);
+  // Refs for real-time trade evaluation (avoids stale closures in WS/timer callbacks)
+  const activeTradesRef = useRef([]);
+  const latestPricesRef = useRef({});
 
   const showToast = ({ type = 'info', icon = 'ℹ️', title, msg }) => {
     const id = Date.now() + Math.random().toString(36).substr(2, 9);
@@ -508,13 +511,17 @@ export default function App() {
         time: ts,
         type: isBuy ? 'BUY' : 'SELL',
         amount,
-        price: 3782 // dummy reference close
+        price: 3782
       });
     }
     setDexTrades(initialDexTrades);
 
-    // 5. Seed Veritas closed trades
-    seedVeritasHistoricalTrades(initial);
+    // 5. NO historical seed — Veritas starts fresh with ZERO trades (pure live mode)
+    const ts0 = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    setAgentLogs(l => ({
+      ...l,
+      veritas: [{ time: ts0, agent: 'veritas', msg: '🟢 LIVE MODE: Veritas engine initialised. Monitoring real-time price ticks for signal resolution.' }]
+    }));
 
     // 6. Check Telegram setup from localstorage
     setTelegramEnabled(localStorage.getItem('tg-enable') === 'true');
@@ -522,7 +529,18 @@ export default function App() {
     setTgChatId(localStorage.getItem('tg-chat-id') || '');
   }, []);
 
-  // Veritas historical seed trades generator
+  // ============================================================
+  // VERITAS REAL-TIME BACKTESTING ENGINE
+  // ============================================================
+
+  // Keep activeTradesRef always in sync with state
+  useEffect(() => {
+    activeTradesRef.current = veritasMetrics.activeTrades;
+  }, [veritasMetrics.activeTrades]);
+
+  // REMOVED: seedVeritasHistoricalTrades — engine is now 100% live
+
+  // Veritas historical seed trades generator — KEPT FOR REFERENCE BUT NOT CALLED
   const seedVeritasHistoricalTrades = (currentAssets) => {
     const assetKeys = Object.keys(currentAssets).filter(k => ['perp', 'stock'].includes(currentAssets[k].type));
     const now = Date.now();
@@ -640,26 +658,28 @@ export default function App() {
     });
   };
 
-  // Re-calculate veritas performance parameters on closed trade additions
+  // -------------------------------------------------------
+  // VERITAS REAL-TIME EVALUATION — ref-based, stale-closure-safe
+  // -------------------------------------------------------
+
+  // Recalculate all Veritas performance metrics after a trade closes
   const runVeritasCalculations = (newClosedTrade) => {
     setVeritasMetrics(prev => {
       const nextClosed = [...prev.closedTrades, newClosedTrade];
-      if (nextClosed.length > 50) nextClosed.shift();
+      if (nextClosed.length > 100) nextClosed.shift();
 
       const wins = nextClosed.filter(t => t.status === 'WIN');
       const losses = nextClosed.filter(t => t.status === 'LOSS');
-      
       const winRate = (wins.length / nextClosed.length) * 100;
-      
-      let grossProfit = wins.reduce((sum, t) => sum + t.pnl * 10000, 0);
-      let grossLoss = losses.reduce((sum, t) => sum + Math.abs(t.pnl) * 10000, 0);
+
+      const grossProfit = wins.reduce((sum, t) => sum + t.pnl * 10000, 0);
+      const grossLoss = losses.reduce((sum, t) => sum + Math.abs(t.pnl) * 10000, 0);
       const profitFactor = grossLoss === 0 ? (grossProfit > 0 ? 9.99 : 0) : grossProfit / grossLoss;
 
       let balance = 10000;
       let peak = 10000;
       let maxDD = 0;
       const equityHistory = [0];
-
       nextClosed.forEach(t => {
         balance += 10000 * t.pnl;
         if (balance > peak) peak = balance;
@@ -669,20 +689,16 @@ export default function App() {
       });
 
       const returns = nextClosed.map(t => t.pnl);
-      const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
-      const variance = returns.reduce((a, b) => a + (b - meanReturn) ** 2, 0) / returns.length;
+      const meanRet = returns.reduce((a, b) => a + b, 0) / returns.length;
+      const variance = returns.reduce((a, b) => a + (b - meanRet) ** 2, 0) / returns.length;
       const stdDev = Math.sqrt(variance);
-      const sharpeRatio = stdDev === 0 ? 0 : (meanReturn / stdDev) * Math.sqrt(252 / 6);
+      const sharpeRatio = stdDev === 0 ? 0 : (meanRet / stdDev) * Math.sqrt(252 / 6);
 
       let verdict = 'ACCUMULATING';
-      if (nextClosed.length >= 10) {
-        if (winRate >= 54 && sharpeRatio >= 1.2 && profitFactor >= 1.4) {
-          verdict = 'APPROVED';
-        } else if (winRate < 46 || sharpeRatio < 0.7 || profitFactor < 1.05) {
-          verdict = 'REJECTED';
-        } else {
-          verdict = 'MONITORING';
-        }
+      if (nextClosed.length >= 5) {
+        if (winRate >= 54 && sharpeRatio >= 1.2 && profitFactor >= 1.4) verdict = 'APPROVED';
+        else if (winRate < 46 || sharpeRatio < 0.7 || profitFactor < 1.05) verdict = 'REJECTED';
+        else verdict = 'MONITORING';
       }
 
       return {
@@ -699,96 +715,89 @@ export default function App() {
     });
   };
 
-  // Evaluate active trades against a live price tick
+  // Core real-time evaluator — SAFE: reads from ref, writes via setState
   const evalActiveTrades = (symbol, currentPrice) => {
-    setVeritasMetrics(prev => {
-      if (prev.activeTrades.length === 0) return prev;
+    // Update the latest price in ref
+    latestPricesRef.current[symbol] = currentPrice;
 
-      const remaining = [];
-      const newlyClosed = [];
-      let updated = false;
+    const trades = activeTradesRef.current;
+    if (!trades || trades.length === 0) return;
 
-      prev.activeTrades.forEach(trade => {
-        if (trade.asset !== symbol) {
-          remaining.push(trade);
-          return;
-        }
+    const toClose = [];
+    const toKeep = [];
 
-        let resolved = false;
-        let outcome = '';
-        let pnl = 0;
-
-        if (trade.action === 'BUY') {
-          if (currentPrice >= trade.target) {
-            resolved = true;
-            outcome = 'WIN';
-            pnl = (trade.target - trade.entry) / trade.entry;
-          } else if (currentPrice <= trade.stop) {
-            resolved = true;
-            outcome = 'LOSS';
-            pnl = (trade.stop - trade.entry) / trade.entry;
-          }
-        } else { // SELL
-          if (currentPrice <= trade.target) {
-            resolved = true;
-            outcome = 'WIN';
-            pnl = (trade.entry - trade.target) / trade.entry;
-          } else if (currentPrice >= trade.stop) {
-            resolved = true;
-            outcome = 'LOSS';
-            pnl = (trade.entry - trade.stop) / trade.entry;
-          }
-        }
-
-        if (resolved) {
-          updated = true;
-          const closed = {
-            ...trade,
-            status: outcome,
-            exitPrice: outcome === 'WIN' ? trade.target : trade.stop,
-            closeTime: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
-            pnl
-          };
-          newlyClosed.push(closed);
-
-          // Add a Veritas console log
-          const logMsg = `Trade resolved: ${trade.asset} (${trade.action}) hit ${outcome === 'WIN' ? 'target' : 'stop-loss'} at $${closed.exitPrice.toLocaleString(undefined, { minimumFractionDigits: trade.dec })}. PnL: ${(pnl * 100).toFixed(2)}%`;
-          const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
-          
-          setAgentLogs(l => {
-            const nextLogs = [...l.veritas, { time: ts, agent: 'veritas', msg: logMsg }];
-            if (nextLogs.length > 60) nextLogs.shift();
-            return { ...l, veritas: nextLogs };
-          });
-
-          setAgentSignalCounts(c => ({ ...c, veritas: c.veritas + 1 }));
-
-          // Show Toast notification
-          showToast({
-            type: outcome === 'WIN' ? 'info' : 'warning',
-            icon: '🛡️',
-            title: `Veritas Validation`,
-            msg: `${trade.asset} ${outcome === 'WIN' ? 'hit target' : 'hit stop'} for ${(pnl * 100).toFixed(2)}% ROI.`
-          });
-        } else {
-          remaining.push(trade);
-        }
-      });
-
-      if (updated) {
-        // Run veritas calculations for each resolved trade sequentially
-        setTimeout(() => {
-          newlyClosed.forEach(c => runVeritasCalculations(c));
-        }, 10);
-
-        return {
-          ...prev,
-          activeTrades: remaining
-        };
+    trades.forEach(trade => {
+      if (trade.asset !== symbol) {
+        toKeep.push(trade);
+        return;
       }
 
-      return prev;
+      let resolved = false;
+      let outcome = '';
+      let pnl = 0;
+
+      if (trade.action === 'BUY') {
+        if (currentPrice >= trade.target) {
+          resolved = true; outcome = 'WIN';
+          pnl = (trade.target - trade.entry) / trade.entry;
+        } else if (currentPrice <= trade.stop) {
+          resolved = true; outcome = 'LOSS';
+          pnl = (trade.stop - trade.entry) / trade.entry;
+        }
+      } else {
+        if (currentPrice <= trade.target) {
+          resolved = true; outcome = 'WIN';
+          pnl = (trade.entry - trade.target) / trade.entry;
+        } else if (currentPrice >= trade.stop) {
+          resolved = true; outcome = 'LOSS';
+          pnl = (trade.entry - trade.stop) / trade.entry;
+        }
+      }
+
+      if (resolved) {
+        const closeTs = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+        toClose.push({
+          ...trade,
+          status: outcome,
+          exitPrice: outcome === 'WIN' ? trade.target : trade.stop,
+          closeTime: closeTs,
+          pnl
+        });
+      } else {
+        toKeep.push(trade);
+      }
     });
+
+    if (toClose.length === 0) return;
+
+    // Update the ref immediately so next tick doesn't re-evaluate same trades
+    activeTradesRef.current = toKeep;
+
+    // Flush closed trades into state
+    toClose.forEach(closed => {
+      const logMsg = `🎯 LIVE RESULT: ${closed.asset} (${closed.action}) ${closed.status === 'WIN' ? '✅ HIT TARGET' : '❌ STOPPED OUT'} @ $${closed.exitPrice.toLocaleString(undefined, { minimumFractionDigits: closed.dec })} | Entry: $${closed.entry.toLocaleString(undefined, { minimumFractionDigits: closed.dec })} | PnL: ${closed.pnl >= 0 ? '+' : ''}${(closed.pnl * 100).toFixed(2)}%`;
+      const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+      setAgentLogs(l => {
+        const next = [...l.veritas, { time: ts, agent: 'veritas', msg: logMsg }];
+        if (next.length > 60) next.shift();
+        return { ...l, veritas: next };
+      });
+
+      setAgentSignalCounts(c => ({ ...c, veritas: c.veritas + 1 }));
+
+      showToast({
+        type: closed.status === 'WIN' ? 'info' : 'warning',
+        icon: closed.status === 'WIN' ? '✅' : '❌',
+        title: `Veritas Live Result`,
+        msg: `${closed.asset} ${closed.status === 'WIN' ? '🎯 Target hit' : '🛑 Stop hit'} · ${closed.pnl >= 0 ? '+' : ''}${(closed.pnl * 100).toFixed(2)}% ROI`
+      });
+
+      runVeritasCalculations(closed);
+    });
+
+    // Update activeTrades in state
+    setVeritasMetrics(prev => ({ ...prev, activeTrades: toKeep }));
   };
 
   // ------------------------------------------------------------
@@ -822,6 +831,9 @@ export default function App() {
           const changePct = parseFloat(d.P);
 
           const keys = BINANCE_SYMBOL_MAP[binSym] || [];
+          // Evaluate trades BEFORE updating state (uses ref, no stale closure)
+          keys.forEach(key => evalActiveTrades(key, price));
+
           setAssets(prev => {
             const updated = { ...prev };
             keys.forEach(key => {
@@ -843,9 +855,6 @@ export default function App() {
                 nextHistory[nextHistory.length - 1] = last;
                 asset.history = nextHistory;
               }
-
-              // Evaluate active trades immediately
-              evalActiveTrades(key, nextPrice);
             });
             return updated;
           });
@@ -977,8 +986,8 @@ export default function App() {
               asset.dayOpen = q.regularMarketOpen;
               asset.dataSource = 'live';
 
-              // check resolutions
-              setTimeout(() => evalActiveTrades(sym, asset.currentPrice), 10);
+              // Evaluate trades using latest live price (ref-based, no closure issues)
+              evalActiveTrades(sym, price);
             }
           }
         });
@@ -1078,8 +1087,8 @@ export default function App() {
             asset.oi = +(asset.oi + (Math.random() - 0.49) * 1.2).toFixed(2);
           }
 
-          // check resolvetrades
-          setTimeout(() => evalActiveTrades(asset.symbol, nextPrice), 10);
+          // Evaluate trades — ref-based, safe outside setState
+          evalActiveTrades(asset.symbol, nextPrice);
         });
 
         return next;
@@ -1334,16 +1343,34 @@ export default function App() {
     }
   }, [Object.keys(assets).length > 0]);
 
-  // Interval for signal generation
+  // Interval for signal generation — every 8s for faster real-time results
   useEffect(() => {
     const signalTimer = setInterval(() => {
-      if (agentsRunning && Math.random() < 0.75) {
+      if (agentsRunning && Math.random() < 0.8) {
         generateAlphaSignal();
       }
-    }, 16000);
+    }, 8000);
 
     return () => clearInterval(signalTimer);
   }, [agentsRunning, marketStatusInfo.status]);
+
+  // Dedicated real-time evaluation tick — checks all active trades every 2s
+  // This ensures even simulated-price assets get checked frequently
+  useEffect(() => {
+    const evalTick = setInterval(() => {
+      const trades = activeTradesRef.current;
+      if (!trades || trades.length === 0) return;
+      // Re-evaluate all active trades using latest known prices
+      const prices = latestPricesRef.current;
+      const symbols = [...new Set(trades.map(t => t.asset))];
+      symbols.forEach(sym => {
+        if (prices[sym] !== undefined) {
+          evalActiveTrades(sym, prices[sym]);
+        }
+      });
+    }, 2000);
+    return () => clearInterval(evalTick);
+  }, []);
 
   // ------------------------------------------------------------
   // ASSET NAVIGATION SELECTION
