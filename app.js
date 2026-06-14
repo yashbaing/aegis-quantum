@@ -23,8 +23,8 @@ const ASSET_TO_BINANCE = {
 
 // All Yahoo Finance symbols to fetch (stocks + indices)
 const YAHOO_SYMBOLS = [
-  'AAPL','MSFT','NVDA','TSLA','META','GOOGL','AMZN','NFLX','AMD','COIN',
-  'SPY','QQQ','^VIX','^DJI','^IXIC'
+  'AAPL', 'MSFT', 'NVDA', 'TSLA', 'META', 'GOOGL', 'AMZN', 'NFLX', 'AMD', 'COIN',
+  'SPY', 'QQQ', '^VIX', '^DJI', '^IXIC'
 ];
 
 // CORS proxies for Yahoo Finance (tried in order until one works)
@@ -36,27 +36,27 @@ const YAHOO_PROXIES = [
 
 // Stock screener config
 const STOCK_SCREENER_LIST = [
-  { symbol:'AAPL',  company:'Apple Inc.',            color:'#888888', sector:'Technology' },
-  { symbol:'MSFT',  company:'Microsoft Corp.',        color:'#00a4ef', sector:'Technology' },
-  { symbol:'NVDA',  company:'NVIDIA Corp.',           color:'#76b900', sector:'Semiconductors' },
-  { symbol:'TSLA',  company:'Tesla Inc.',             color:'#e31937', sector:'Automotive' },
-  { symbol:'META',  company:'Meta Platforms Inc.',    color:'#0082fb', sector:'Social Media' },
-  { symbol:'GOOGL', company:'Alphabet Inc.',          color:'#4285f4', sector:'Technology' },
-  { symbol:'AMZN',  company:'Amazon.com Inc.',        color:'#ff9900', sector:'E-Commerce' },
-  { symbol:'NFLX',  company:'Netflix Inc.',           color:'#e50914', sector:'Streaming' },
-  { symbol:'AMD',   company:'AMD Inc.',               color:'#ed1c24', sector:'Semiconductors' },
-  { symbol:'COIN',  company:'Coinbase Global Inc.',   color:'#0052ff', sector:'Fintech' },
+  { symbol: 'AAPL', company: 'Apple Inc.', color: '#888888', sector: 'Technology' },
+  { symbol: 'MSFT', company: 'Microsoft Corp.', color: '#00a4ef', sector: 'Technology' },
+  { symbol: 'NVDA', company: 'NVIDIA Corp.', color: '#76b900', sector: 'Semiconductors' },
+  { symbol: 'TSLA', company: 'Tesla Inc.', color: '#e31937', sector: 'Automotive' },
+  { symbol: 'META', company: 'Meta Platforms Inc.', color: '#0082fb', sector: 'Social Media' },
+  { symbol: 'GOOGL', company: 'Alphabet Inc.', color: '#4285f4', sector: 'Technology' },
+  { symbol: 'AMZN', company: 'Amazon.com Inc.', color: '#ff9900', sector: 'E-Commerce' },
+  { symbol: 'NFLX', company: 'Netflix Inc.', color: '#e50914', sector: 'Streaming' },
+  { symbol: 'AMD', company: 'AMD Inc.', color: '#ed1c24', sector: 'Semiconductors' },
+  { symbol: 'COIN', company: 'Coinbase Global Inc.', color: '#0052ff', sector: 'Fintech' },
 ];
 
 const INDEX_LIST = [
-  { symbol:'SPY',   name:'S&P 500',     icon:'📊', color:'var(--cyan)' },
-  { symbol:'QQQ',   name:'NASDAQ 100',  icon:'💻', color:'var(--violet)' },
-  { symbol:'^DJI',  name:'Dow Jones',   icon:'🏦', color:'var(--emerald)' },
-  { symbol:'^VIX',  name:'VIX / Fear',  icon:'😨', color:'var(--amber)' },
+  { symbol: 'SPY', name: 'S&P 500', icon: '📊', color: 'var(--cyan)' },
+  { symbol: 'QQQ', name: 'NASDAQ 100', icon: '💻', color: 'var(--violet)' },
+  { symbol: '^DJI', name: 'Dow Jones', icon: '🏦', color: 'var(--emerald)' },
+  { symbol: '^VIX', name: 'VIX / Fear', icon: '😨', color: 'var(--amber)' },
 ];
 
 // Binance klines interval map
-const TF_TO_BINANCE = { '15m':'15m', '1h':'1h', '4h':'4h', '1d':'1d' };
+const TF_TO_BINANCE = { '15m': '15m', '1h': '1h', '4h': '4h', '1d': '1d' };
 
 // ============================================================
 // STATE
@@ -71,19 +71,8 @@ const STATE = {
   oppFilter: 'all',
   indicators: { ma: true, bb: true, rsi: true, macd: true, vol: false },
   opportunities: [],
-  agentLogs: { aegis: [], sentinel: [], vox: [], predictor: [], veritas: [] },
-  agentSignalCount: { aegis: 0, sentinel: 0, vox: 0, predictor: 0, veritas: 0 },
-  veritas: {
-    activeTrades: [],
-    closedTrades: [],
-    capital: 10000,
-    equityHistory: [0],
-    winRate: 0,
-    sharpeRatio: 0,
-    maxDrawdown: 0,
-    profitFactor: 0,
-    verdict: 'ACCUMULATING'
-  },
+  agentLogs: { aegis: [], sentinel: [], vox: [], predictor: [] },
+  agentSignalCount: { aegis: 0, sentinel: 0, vox: 0, predictor: 0 },
   dexTrades: [],
   newsFeed: [],
   sentimentIndex: 78,
@@ -95,31 +84,31 @@ const STATE = {
 
   assets: {
     // Perpetuals (real Binance prices)
-    'BTC-PERP': { symbol:'BTC-PERP', display:'₿',  type:'perp',  basePrice:68000, currentPrice:68245, change:1.25, fundingRate:0.0150, oi:482.4, liq:12.4, lsRatio:[58,42], dec:2, history:[], dataSource:'simulated' },
-    'ETH-PERP': { symbol:'ETH-PERP', display:'Ξ',  type:'perp',  basePrice:3800,  currentPrice:3782,  change:-0.85,fundingRate:0.0085, oi:215.1, liq:4.8,  lsRatio:[52,48], dec:2, history:[], dataSource:'simulated' },
-    'SOL-PERP': { symbol:'SOL-PERP', display:'◎',  type:'perp',  basePrice:175,   currentPrice:178,   change:3.42, fundingRate:0.0450, oi:84.15, liq:1.9,  lsRatio:[64,36], dec:2, history:[], dataSource:'simulated' },
+    'BTC-PERP': { symbol: 'BTC-PERP', display: '₿', type: 'perp', basePrice: 68000, currentPrice: 68245, change: 1.25, fundingRate: 0.0150, oi: 482.4, liq: 12.4, lsRatio: [58, 42], dec: 2, history: [], dataSource: 'simulated' },
+    'ETH-PERP': { symbol: 'ETH-PERP', display: 'Ξ', type: 'perp', basePrice: 3800, currentPrice: 3782, change: -0.85, fundingRate: 0.0085, oi: 215.1, liq: 4.8, lsRatio: [52, 48], dec: 2, history: [], dataSource: 'simulated' },
+    'SOL-PERP': { symbol: 'SOL-PERP', display: '◎', type: 'perp', basePrice: 175, currentPrice: 178, change: 3.42, fundingRate: 0.0450, oi: 84.15, liq: 1.9, lsRatio: [64, 36], dec: 2, history: [], dataSource: 'simulated' },
     // DEX (mirrors Binance)
-    'USDC/WETH':{ symbol:'USDC/WETH',display:'🦄',  type:'dex',   basePrice:3800,  currentPrice:3785,  change:-0.78,tvl:45.2,  vol24h:18.4, dex:'Uniswap v3', dec:2, history:[], dataSource:'simulated' },
-    'SOL/USDC': { symbol:'SOL/USDC', display:'⚡',  type:'dex',   basePrice:175,   currentPrice:178,   change:3.45, tvl:12.8,  vol24h:5.1,  dex:'Raydium',   dec:2, history:[], dataSource:'simulated' },
+    'USDC/WETH': { symbol: 'USDC/WETH', display: '🦄', type: 'dex', basePrice: 3800, currentPrice: 3785, change: -0.78, tvl: 45.2, vol24h: 18.4, dex: 'Uniswap v3', dec: 2, history: [], dataSource: 'simulated' },
+    'SOL/USDC': { symbol: 'SOL/USDC', display: '⚡', type: 'dex', basePrice: 175, currentPrice: 178, change: 3.45, tvl: 12.8, vol24h: 5.1, dex: 'Raydium', dec: 2, history: [], dataSource: 'simulated' },
     // CEX (real Binance prices)
-    'BTC/USD':  { symbol:'BTC/USD',  display:'₿',  type:'cex',   basePrice:68000, currentPrice:68235, change:1.22, exchange:'Coinbase', spread:0.50, vol24h:124.5, dec:2, history:[], dataSource:'simulated' },
-    'ETH/USDT': { symbol:'ETH/USDT', display:'Ξ',  type:'cex',   basePrice:3800,  currentPrice:3781,  change:-0.88,exchange:'Binance',  spread:0.10, vol24h:215.8, dec:2, history:[], dataSource:'simulated' },
+    'BTC/USD': { symbol: 'BTC/USD', display: '₿', type: 'cex', basePrice: 68000, currentPrice: 68235, change: 1.22, exchange: 'Coinbase', spread: 0.50, vol24h: 124.5, dec: 2, history: [], dataSource: 'simulated' },
+    'ETH/USDT': { symbol: 'ETH/USDT', display: 'Ξ', type: 'cex', basePrice: 3800, currentPrice: 3781, change: -0.88, exchange: 'Binance', spread: 0.10, vol24h: 215.8, dec: 2, history: [], dataSource: 'simulated' },
     // Stocks (real Yahoo Finance)
-    'AAPL':  { symbol:'AAPL',  display:'🍎', type:'stock', basePrice:196,   currentPrice:196.75,  change:-0.63, marketCap:3010, vol24h:52.8,  dec:2, history:[], dataSource:'simulated' },
-    'MSFT':  { symbol:'MSFT',  display:'M',  type:'stock', basePrice:420,   currentPrice:420.50,  change:0.48,  marketCap:3120, vol24h:18.2,  dec:2, history:[], dataSource:'simulated' },
-    'NVDA':  { symbol:'NVDA',  display:'N',  type:'stock', basePrice:1100,  currentPrice:1120.50, change:4.12,  marketCap:2750, vol24h:142.4, dec:2, history:[], dataSource:'simulated' },
-    'TSLA':  { symbol:'TSLA',  display:'T',  type:'stock', basePrice:182,   currentPrice:184.20,  change:1.48,  marketCap:588,  vol24h:88.5,  dec:2, history:[], dataSource:'simulated' },
-    'META':  { symbol:'META',  display:'f',  type:'stock', basePrice:508,   currentPrice:510.30,  change:1.18,  marketCap:1300, vol24h:12.4,  dec:2, history:[], dataSource:'simulated' },
-    'GOOGL': { symbol:'GOOGL', display:'G',  type:'stock', basePrice:177,   currentPrice:178.40,  change:0.82,  marketCap:2200, vol24h:22.1,  dec:2, history:[], dataSource:'simulated' },
-    'AMZN':  { symbol:'AMZN',  display:'A',  type:'stock', basePrice:181,   currentPrice:182.80,  change:1.55,  marketCap:1900, vol24h:28.4,  dec:2, history:[], dataSource:'simulated' },
-    'NFLX':  { symbol:'NFLX',  display:'N',  type:'stock', basePrice:678,   currentPrice:680.40,  change:-0.42, marketCap:290,  vol24h:4.2,   dec:2, history:[], dataSource:'simulated' },
-    'AMD':   { symbol:'AMD',   display:'A',  type:'stock', basePrice:153,   currentPrice:155.20,  change:2.05,  marketCap:250,  vol24h:32.8,  dec:2, history:[], dataSource:'simulated' },
-    'COIN':  { symbol:'COIN',  display:'C',  type:'stock', basePrice:238,   currentPrice:240.80,  change:3.52,  marketCap:62,   vol24h:8.4,   dec:2, history:[], dataSource:'simulated' },
+    'AAPL': { symbol: 'AAPL', display: '🍎', type: 'stock', basePrice: 196, currentPrice: 196.75, change: -0.63, marketCap: 3010, vol24h: 52.8, dec: 2, history: [], dataSource: 'simulated' },
+    'MSFT': { symbol: 'MSFT', display: 'M', type: 'stock', basePrice: 420, currentPrice: 420.50, change: 0.48, marketCap: 3120, vol24h: 18.2, dec: 2, history: [], dataSource: 'simulated' },
+    'NVDA': { symbol: 'NVDA', display: 'N', type: 'stock', basePrice: 1100, currentPrice: 1120.50, change: 4.12, marketCap: 2750, vol24h: 142.4, dec: 2, history: [], dataSource: 'simulated' },
+    'TSLA': { symbol: 'TSLA', display: 'T', type: 'stock', basePrice: 182, currentPrice: 184.20, change: 1.48, marketCap: 588, vol24h: 88.5, dec: 2, history: [], dataSource: 'simulated' },
+    'META': { symbol: 'META', display: 'f', type: 'stock', basePrice: 508, currentPrice: 510.30, change: 1.18, marketCap: 1300, vol24h: 12.4, dec: 2, history: [], dataSource: 'simulated' },
+    'GOOGL': { symbol: 'GOOGL', display: 'G', type: 'stock', basePrice: 177, currentPrice: 178.40, change: 0.82, marketCap: 2200, vol24h: 22.1, dec: 2, history: [], dataSource: 'simulated' },
+    'AMZN': { symbol: 'AMZN', display: 'A', type: 'stock', basePrice: 181, currentPrice: 182.80, change: 1.55, marketCap: 1900, vol24h: 28.4, dec: 2, history: [], dataSource: 'simulated' },
+    'NFLX': { symbol: 'NFLX', display: 'N', type: 'stock', basePrice: 678, currentPrice: 680.40, change: -0.42, marketCap: 290, vol24h: 4.2, dec: 2, history: [], dataSource: 'simulated' },
+    'AMD': { symbol: 'AMD', display: 'A', type: 'stock', basePrice: 153, currentPrice: 155.20, change: 2.05, marketCap: 250, vol24h: 32.8, dec: 2, history: [], dataSource: 'simulated' },
+    'COIN': { symbol: 'COIN', display: 'C', type: 'stock', basePrice: 238, currentPrice: 240.80, change: 3.52, marketCap: 62, vol24h: 8.4, dec: 2, history: [], dataSource: 'simulated' },
     // Indices (Yahoo Finance)
-    'SPY':   { symbol:'SPY',   display:'S',  type:'index', basePrice:534,   currentPrice:535.40,  change:0.42,  name:'S&P 500 ETF',   dec:2, history:[], dataSource:'simulated' },
-    'QQQ':   { symbol:'QQQ',   display:'Q',  type:'index', basePrice:459,   currentPrice:460.80,  change:0.58,  name:'NASDAQ-100 ETF', dec:2, history:[], dataSource:'simulated' },
-    '^DJI':  { symbol:'^DJI',  display:'D',  type:'index', basePrice:40000, currentPrice:40250,   change:0.28,  name:'Dow Jones',      dec:0, history:[], dataSource:'simulated' },
-    '^VIX':  { symbol:'^VIX',  display:'V',  type:'index', basePrice:14,    currentPrice:14.5,    change:-2.1,  name:'CBOE VIX',       dec:2, history:[], dataSource:'simulated' },
+    'SPY': { symbol: 'SPY', display: 'S', type: 'index', basePrice: 534, currentPrice: 535.40, change: 0.42, name: 'S&P 500 ETF', dec: 2, history: [], dataSource: 'simulated' },
+    'QQQ': { symbol: 'QQQ', display: 'Q', type: 'index', basePrice: 459, currentPrice: 460.80, change: 0.58, name: 'NASDAQ-100 ETF', dec: 2, history: [], dataSource: 'simulated' },
+    '^DJI': { symbol: '^DJI', display: 'D', type: 'index', basePrice: 40000, currentPrice: 40250, change: 0.28, name: 'Dow Jones', dec: 0, history: [], dataSource: 'simulated' },
+    '^VIX': { symbol: '^VIX', display: 'V', type: 'index', basePrice: 14, currentPrice: 14.5, change: -2.1, name: 'CBOE VIX', dec: 2, history: [], dataSource: 'simulated' },
   }
 };
 
@@ -200,11 +189,11 @@ function buildSimulatedHistory(asset) {
     const open = price;
     const close = price * (1 + drift);
     const high = Math.max(open, close) * (1 + Math.random() * 0.006);
-    const low  = Math.min(open, close) * (1 - Math.random() * 0.006);
+    const low = Math.min(open, close) * (1 - Math.random() * 0.006);
     asset.history.push({
       time: new Date(now - i * 15 * 60 * 1000),
       open: +open.toFixed(asset.dec), high: +high.toFixed(asset.dec),
-      low: +low.toFixed(asset.dec),  close: +close.toFixed(asset.dec),
+      low: +low.toFixed(asset.dec), close: +close.toFixed(asset.dec),
       vol: Math.round(40000 + Math.random() * 800000)
     });
     price = close;
@@ -234,10 +223,10 @@ function getMarketStatus() {
     const nextOpen = weekday === 'Sat'
       ? `Mon 9:30 AM ET`
       : `Mon 9:30 AM ET`;
-    return { status: 'closed', label: 'Weekend', color: 'var(--red)', detail: `Opens ${nextOpen}`, etTime: `${weekday} ${String(hour).padStart(2,'0')}:${String(minute).padStart(2,'0')}` };
+    return { status: 'closed', label: 'Weekend', color: 'var(--red)', detail: `Opens ${nextOpen}`, etTime: `${weekday} ${String(hour).padStart(2, '0')}:${String(minute).padStart(2, '0')}` };
   }
 
-  const etStr = `${String(hour===24?0:hour).padStart(2,'0')}:${String(minute).padStart(2,'0')} ET`;
+  const etStr = `${String(hour === 24 ? 0 : hour).padStart(2, '0')}:${String(minute).padStart(2, '0')} ET`;
 
   // Pre-market 4:00 AM – 9:30 AM (240 – 570)
   if (totalMins >= 240 && totalMins < 570) {
@@ -317,11 +306,11 @@ function initBinanceWebSocket() {
         const d = JSON.parse(e.data);
         if (!d.s) return;
         const binSym = d.s; // e.g. 'BTCUSDT'
-        const price   = parseFloat(d.c); // last price
+        const price = parseFloat(d.c); // last price
         const changePct = parseFloat(d.P); // 24h change %
-        const high24  = parseFloat(d.h);
-        const low24   = parseFloat(d.l);
-        const vol24   = parseFloat(d.v);
+        const high24 = parseFloat(d.h);
+        const low24 = parseFloat(d.l);
+        const vol24 = parseFloat(d.v);
 
         const keys = BINANCE_SYMBOL_MAP[binSym] || [];
         keys.forEach(key => {
@@ -335,9 +324,8 @@ function initBinanceWebSocket() {
             const last = asset.history[asset.history.length - 1];
             last.close = asset.currentPrice;
             if (asset.currentPrice > last.high) last.high = asset.currentPrice;
-            if (asset.currentPrice < last.low)  last.low  = asset.currentPrice;
+            if (asset.currentPrice < last.low) last.low = asset.currentPrice;
           }
-          checkActiveTrades(asset, asset.currentPrice);
         });
 
         if (STATE.activeAsset === 'BTC-PERP' || STATE.activeAsset === 'BTC/USD') {
@@ -390,12 +378,12 @@ async function fetchBinanceKlines(assetKey, tf = '15m') {
 
     const asset = STATE.assets[assetKey];
     asset.history = raw.map(k => ({
-      time:  new Date(k[0]),
-      open:  +parseFloat(k[1]).toFixed(asset.dec),
-      high:  +parseFloat(k[2]).toFixed(asset.dec),
-      low:   +parseFloat(k[3]).toFixed(asset.dec),
+      time: new Date(k[0]),
+      open: +parseFloat(k[1]).toFixed(asset.dec),
+      high: +parseFloat(k[2]).toFixed(asset.dec),
+      low: +parseFloat(k[3]).toFixed(asset.dec),
       close: +parseFloat(k[4]).toFixed(asset.dec),
-      vol:   +parseFloat(k[5]).toFixed(0),
+      vol: +parseFloat(k[5]).toFixed(0),
     }));
 
     if (asset.history.length) {
@@ -420,7 +408,7 @@ async function fetchYahooURL(url) {
       const data = await res.json();
       if (data?.quoteResponse?.result?.length || data?.chart?.result?.length) return data;
     }
-  } catch (_) {}
+  } catch (_) { }
 
   // 2) Try each CORS proxy in order
   for (const proxy of YAHOO_PROXIES) {
@@ -432,7 +420,7 @@ async function fetchYahooURL(url) {
         const data = JSON.parse(text);
         if (data?.quoteResponse?.result?.length || data?.chart?.result?.length) return data;
       }
-    } catch (_) {}
+    } catch (_) { }
   }
   return null;
 }
@@ -496,10 +484,9 @@ function processYahooQuotes(quotes) {
         asset.marketCap = q.marketCap ? +(q.marketCap / 1e9).toFixed(1) : asset.marketCap;
         asset.vol24h = q.regularMarketVolume ? +(q.regularMarketVolume / 1e6).toFixed(1) : asset.vol24h;
         asset.dayHigh = q.regularMarketDayHigh;
-        asset.dayLow  = q.regularMarketDayLow;
+        asset.dayLow = q.regularMarketDayLow;
         asset.dayOpen = q.regularMarketOpen;
         asset.dataSource = 'live';
-        checkActiveTrades(asset, asset.currentPrice);
       }
     }
   });
@@ -507,9 +494,9 @@ function processYahooQuotes(quotes) {
 
 async function fetchStockKlines(symbol, tf = '15m') {
   const intervalMap = { '15m': '15m', '1h': '60m', '4h': '60m', '1d': '1d' };
-  const rangeMap    = { '15m': '5d',  '1h': '30d', '4h': '30d', '1d': '1y' };
+  const rangeMap = { '15m': '5d', '1h': '30d', '4h': '30d', '1d': '1y' };
   const interval = intervalMap[tf] || '15m';
-  const range    = rangeMap[tf]    || '5d';
+  const range = rangeMap[tf] || '5d';
 
   const url = `https://query1.finance.yahoo.com/v8/finance/chart/${symbol}?interval=${interval}&range=${range}&includePrePost=true`;
   const result = await fetchYahooURL(url);
@@ -520,17 +507,17 @@ async function fetchStockKlines(symbol, tf = '15m') {
     const r = result.chart?.result?.[0];
     if (!r) return false;
     const ts = r.timestamp || [];
-    const q  = r.indicators?.quote?.[0] || {};
+    const q = r.indicators?.quote?.[0] || {};
     const asset = STATE.assets[symbol];
     if (!asset) return false;
 
     const bars = ts.map((t, i) => ({
-      time:  new Date(t * 1000),
-      open:  q.open?.[i]   || 0,
-      high:  q.high?.[i]   || 0,
-      low:   q.low?.[i]    || 0,
-      close: q.close?.[i]  || 0,
-      vol:   q.volume?.[i] || 0,
+      time: new Date(t * 1000),
+      open: q.open?.[i] || 0,
+      high: q.high?.[i] || 0,
+      low: q.low?.[i] || 0,
+      close: q.close?.[i] || 0,
+      vol: q.volume?.[i] || 0,
     })).filter(b => b.close > 0);
 
     if (bars.length > 5) {
@@ -576,13 +563,12 @@ function tickSimulatedCrypto() {
       const last = asset.history[asset.history.length - 1];
       last.close = asset.currentPrice;
       if (asset.currentPrice > last.high) last.high = asset.currentPrice;
-      if (asset.currentPrice < last.low)  last.low  = asset.currentPrice;
+      if (asset.currentPrice < last.low) last.low = asset.currentPrice;
     }
     if (asset.type === 'perp') {
       asset.fundingRate = +(asset.fundingRate + (Math.random() - 0.5) * 0.0008).toFixed(4);
       asset.oi = +(asset.oi + (Math.random() - 0.49) * 1.2).toFixed(2);
     }
-    checkActiveTrades(asset, asset.currentPrice);
   });
 
   updateSidebarPrices();
@@ -599,7 +585,7 @@ function updateSidebarPrices() {
   Object.values(STATE.assets).forEach(asset => {
     const id = asset.symbol.replace(/\//g, '-').replace(/\^/g, '');
     const priceEl = document.getElementById('price-' + id);
-    const chgEl   = document.getElementById('chg-' + id);
+    const chgEl = document.getElementById('chg-' + id);
     if (priceEl) {
       const isLive = asset.dataSource === 'live';
       priceEl.textContent = '$' + asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 0, maximumFractionDigits: asset.dec });
@@ -618,11 +604,11 @@ function updateSidebarPrices() {
 function computeAssetMood(assetKey) {
   const asset = STATE.assets[assetKey];
   if (!asset) return { score: 50, label: 'Neutral', emoji: '🟡', color: 'var(--amber)' };
-  
+
   const history = asset.history || [];
   const n = history.length;
   let score = 50; // Neutral baseline
-  
+
   // 1. RSI Factor
   let rsi = 50;
   if (n >= 14) {
@@ -633,11 +619,11 @@ function computeAssetMood(assetKey) {
         rsi = lastRsi;
         score += (rsi - 50) * 0.4; // +/- 20 range
       }
-    } catch(e) {
+    } catch (e) {
       console.warn("RSI calc failed for", assetKey, e);
     }
   }
-  
+
   // 2. MACD Factor
   if (n >= 26) {
     try {
@@ -650,14 +636,14 @@ function computeAssetMood(assetKey) {
         const normDiff = (diff / asset.currentPrice) * 10000;
         score += Math.max(-10, Math.min(10, normDiff * 1.5));
       }
-    } catch(e) {
+    } catch (e) {
       console.warn("MACD calc failed for", assetKey, e);
     }
   }
-  
+
   // 3. Price change (24h)
   score += asset.change * 2.5; // contributor +/- 20
-  
+
   // 4. Bollinger Bands position
   if (n >= 20) {
     try {
@@ -671,18 +657,18 @@ function computeAssetMood(assetKey) {
           score += (percent - 0.5) * 20; // contributor +/- 10
         }
       }
-    } catch(e) {
+    } catch (e) {
       console.warn("BB calc failed for", assetKey, e);
     }
   }
-  
+
   // Clamping
   score = Math.max(10, Math.min(95, score));
-  
+
   let label = 'Neutral';
   let emoji = '🟡';
   let color = 'var(--amber)';
-  
+
   if (score >= 75) {
     label = 'Extreme Greed';
     emoji = '🚀';
@@ -704,36 +690,36 @@ function computeAssetMood(assetKey) {
     emoji = '⚠️';
     color = 'var(--red)';
   }
-  
+
   return { score, label, emoji, color };
 }
 
 function updateAssetMoodUI() {
   const activeKey = STATE.activeAsset;
   const mood = computeAssetMood(activeKey);
-  
+
   // Update topbar stat label
   const labelEl = document.getElementById('tb-asset-mood-label');
   if (labelEl) labelEl.textContent = `${activeKey} Mood`;
-  
+
   // Update topbar stat value
   const valEl = document.getElementById('tb-asset-mood');
   if (valEl) {
     valEl.textContent = `${mood.emoji} ${mood.label} ${Math.round(mood.score)}%`;
     valEl.style.color = mood.color;
   }
-  
+
   // Update gauge card title
   const gaugeTitleEl = document.getElementById('asset-gauge-title');
   if (gaugeTitleEl) gaugeTitleEl.textContent = `${activeKey} Sentiment`;
-  
+
   // Update gauge card value label
   const gaugeValEl = document.getElementById('asset-sentiment-pct-label');
   if (gaugeValEl) {
     gaugeValEl.textContent = `${mood.emoji} ${mood.label} ${Math.round(mood.score)}%`;
     gaugeValEl.style.color = mood.color;
   }
-  
+
   // Update gauge needle
   const needleEl = document.getElementById('asset-sentiment-needle');
   if (needleEl) needleEl.style.left = `${mood.score}%`;
@@ -751,7 +737,7 @@ function updateTopbar() {
   chgEl.className = 'asset-hero-change ' + (asset.change >= 0 ? 'price-up' : 'price-down');
 
   document.getElementById('tb-agents').textContent = STATE.agentsRunning ? '4 / 4' : '0 / 4';
-  document.getElementById('tb-alpha').textContent  = STATE.opportunities.length + ' Active';
+  document.getElementById('tb-alpha').textContent = STATE.opportunities.length + ' Active';
   const si = STATE.sentimentIndex;
   document.getElementById('tb-mood').textContent = si + '% ' + (si > 55 ? 'Bullish' : si < 45 ? 'Bearish' : 'Neutral');
   document.getElementById('tb-mood').style.color = si > 55 ? 'var(--emerald)' : si < 45 ? 'var(--red)' : 'var(--amber)';
@@ -772,36 +758,36 @@ function updateFooterBar() {
   if (asset.type === 'perp') {
     document.getElementById('fs-funding').textContent = (asset.fundingRate >= 0 ? '+' : '') + asset.fundingRate.toFixed(4) + '%';
     document.getElementById('fs-funding').className = 'fs-value ' + (asset.fundingRate >= 0 ? 'price-up' : 'price-down');
-    document.getElementById('fs-oi').textContent  = '$' + asset.oi.toFixed(2) + 'M';
+    document.getElementById('fs-oi').textContent = '$' + asset.oi.toFixed(2) + 'M';
     document.getElementById('fs-liq').textContent = '$' + asset.liq.toFixed(1) + 'M Longs';
-    document.getElementById('fs-ls').textContent  = asset.lsRatio[0] + '% / ' + asset.lsRatio[1] + '%';
+    document.getElementById('fs-ls').textContent = asset.lsRatio[0] + '% / ' + asset.lsRatio[1] + '%';
   } else if (asset.type === 'stock' || asset.type === 'index') {
     const ms = getMarketStatus();
     document.getElementById('fs-funding').textContent = ms.label;
     document.getElementById('fs-funding').style.color = ms.color;
-    document.getElementById('fs-oi').textContent  = asset.marketCap ? '$' + asset.marketCap + 'B Mkt Cap' : 'N/A';
+    document.getElementById('fs-oi').textContent = asset.marketCap ? '$' + asset.marketCap + 'B Mkt Cap' : 'N/A';
     document.getElementById('fs-liq').textContent = asset.vol24h ? asset.vol24h + 'M Shares' : 'N/A';
-    document.getElementById('fs-ls').textContent  = asset.dayHigh && asset.dayLow ? `H:$${asset.dayHigh?.toFixed(2)} L:$${asset.dayLow?.toFixed(2)}` : 'N/A';
+    document.getElementById('fs-ls').textContent = asset.dayHigh && asset.dayLow ? `H:$${asset.dayHigh?.toFixed(2)} L:$${asset.dayLow?.toFixed(2)}` : 'N/A';
   } else {
     document.getElementById('fs-funding').textContent = 'N/A';
-    document.getElementById('fs-oi').textContent  = 'Vol: $' + (asset.vol24h || 0).toFixed(1) + 'M';
+    document.getElementById('fs-oi').textContent = 'Vol: $' + (asset.vol24h || 0).toFixed(1) + 'M';
     document.getElementById('fs-liq').textContent = 'N/A';
-    document.getElementById('fs-ls').textContent  = 'N/A';
+    document.getElementById('fs-ls').textContent = 'N/A';
   }
   const c = asset.change;
   const cEl = document.getElementById('fs-consensus');
-  if (c > 2)       { cEl.textContent = 'Strong Buy';  cEl.className = 'action-badge ab-buy'; }
-  else if (c > 0.5){ cEl.textContent = 'Buy';         cEl.className = 'action-badge ab-buy'; }
+  if (c > 2) { cEl.textContent = 'Strong Buy'; cEl.className = 'action-badge ab-buy'; }
+  else if (c > 0.5) { cEl.textContent = 'Buy'; cEl.className = 'action-badge ab-buy'; }
   else if (c < -2) { cEl.textContent = 'Strong Sell'; cEl.className = 'action-badge ab-sell'; }
-  else if (c < -0.5){ cEl.textContent = 'Sell';       cEl.className = 'action-badge ab-sell'; }
-  else             { cEl.textContent = 'Hold';         cEl.className = 'action-badge ab-hold'; }
+  else if (c < -0.5) { cEl.textContent = 'Sell'; cEl.className = 'action-badge ab-sell'; }
+  else { cEl.textContent = 'Hold'; cEl.className = 'action-badge ab-hold'; }
 }
 
 // ============================================================
 // CANVAS CHART
 // ============================================================
 const canvas = document.getElementById('price-chart');
-const ctx    = canvas.getContext('2d');
+const ctx = canvas.getContext('2d');
 const tooltip = document.getElementById('chart-tooltip');
 let hoverIdx = -1;
 const RIGHT_PAD = 68;
@@ -810,7 +796,7 @@ function resizeCanvas() {
   const wrap = document.getElementById('chart-canvas-wrap');
   const dpr = window.devicePixelRatio || 1;
   const w = wrap.clientWidth, h = wrap.clientHeight;
-  canvas.width  = w * dpr; canvas.height = h * dpr;
+  canvas.width = w * dpr; canvas.height = h * dpr;
   canvas.style.width = w + 'px'; canvas.style.height = h + 'px';
   ctx.scale(dpr, dpr);
 }
@@ -850,30 +836,30 @@ function drawChart() {
   const asset = STATE.assets[STATE.activeAsset];
   if (!asset?.history.length) return;
 
-  const W  = canvas.width  / (window.devicePixelRatio || 1);
-  const H  = canvas.height / (window.devicePixelRatio || 1);
+  const W = canvas.width / (window.devicePixelRatio || 1);
+  const H = canvas.height / (window.devicePixelRatio || 1);
   const data = asset.history;
   const n = data.length;
   const dec = asset.dec;
 
   ctx.clearRect(0, 0, W, H);
 
-  const showRSI  = STATE.indicators.rsi;
+  const showRSI = STATE.indicators.rsi;
   const showMACD = STATE.indicators.macd;
-  const showVol  = STATE.indicators.vol;
+  const showVol = STATE.indicators.vol;
   const subCount = [showRSI, showMACD, showVol].filter(Boolean).length;
-  const mainPct  = subCount === 0 ? 0.96 : subCount === 1 ? 0.72 : subCount === 2 ? 0.58 : 0.50;
+  const mainPct = subCount === 0 ? 0.96 : subCount === 1 ? 0.72 : subCount === 2 ? 0.58 : 0.50;
   const mainH = H * mainPct;
-  const subH  = subCount > 0 ? (H * (1 - mainPct)) / subCount : 0;
+  const subH = subCount > 0 ? (H * (1 - mainPct)) / subCount : 0;
   const chartW = W - RIGHT_PAD;
   const step = chartW / n;
   const candleW = Math.max(1, step * 0.7);
 
   const sma20 = calcSMA(data, 20);
-  const ema9  = calcEMA(data, 9);
-  const bb    = calcBB(data, 20, 2);
+  const ema9 = calcEMA(data, 9);
+  const bb = calcBB(data, 20, 2);
   const rsiArr = calcRSI(data, 14);
-  const macd  = calcMACD(data);
+  const macd = calcMACD(data);
 
   let maxP = -Infinity, minP = Infinity;
   data.forEach(b => { if (b.high > maxP) maxP = b.high; if (b.low < minP) minP = b.low; });
@@ -885,7 +871,7 @@ function drawChart() {
   maxP += rng * 0.04; minP -= rng * 0.04;
 
   const scaleY = v => mainH - 30 - ((v - minP) / (maxP - minP)) * (mainH - 50);
-  const xOf    = i => i * step + step / 2;
+  const xOf = i => i * step + step / 2;
 
   // Grid
   ctx.lineWidth = 0.5;
@@ -901,7 +887,7 @@ function drawChart() {
   // Time labels
   for (let i = 0; i < n; i += Math.ceil(n / 6)) {
     const t = data[i].time;
-    const label = t instanceof Date ? t.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}) : '';
+    const label = t instanceof Date ? t.toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' }) : '';
     ctx.fillStyle = '#2d4466'; ctx.font = '8px Fira Code,monospace'; ctx.textAlign = 'center';
     ctx.fillText(label, xOf(i), mainH - 8);
   }
@@ -927,7 +913,7 @@ function drawChart() {
       const p = [xOf(i), scaleY(bb.upper[i])];
       if (!s) { ctx.moveTo(...p); s = true; } else ctx.lineTo(...p);
     }
-    for (let i = n-1; i >= 0; i--) {
+    for (let i = n - 1; i >= 0; i--) {
       if (bb.lower[i] == null) continue;
       ctx.lineTo(xOf(i), scaleY(bb.lower[i]));
     }
@@ -936,7 +922,7 @@ function drawChart() {
 
   // EMA 9 & SMA 20
   if (STATE.indicators.ma) {
-    [[ema9,'rgba(139,92,246,0.6)'],[sma20,'rgba(217,70,239,0.6)']].forEach(([arr, col]) => {
+    [[ema9, 'rgba(139,92,246,0.6)'], [sma20, 'rgba(217,70,239,0.6)']].forEach(([arr, col]) => {
       ctx.strokeStyle = col; ctx.lineWidth = 1.2; ctx.beginPath(); let s = false;
       for (let i = 0; i < n; i++) {
         if (arr[i] == null) continue;
@@ -954,7 +940,7 @@ function drawChart() {
     ctx.lineWidth = 1;
     ctx.beginPath(); ctx.moveTo(cx, scaleY(b.high)); ctx.lineTo(cx, scaleY(b.low)); ctx.stroke();
     const top = scaleY(Math.max(b.open, b.close));
-    const bh  = Math.max(scaleY(Math.min(b.open, b.close)) - top, 1.5);
+    const bh = Math.max(scaleY(Math.min(b.open, b.close)) - top, 1.5);
     ctx.fillStyle = isUp ? '#10b981' : '#f43f5e'; ctx.lineWidth = 0.5;
     ctx.fillRect(i * step + step * 0.15, top, candleW, bh);
   }
@@ -963,37 +949,37 @@ function drawChart() {
   if (hoverIdx >= 0) {
     ctx.fillStyle = 'rgba(6,182,212,0.04)';
     ctx.fillRect(hoverIdx * step, 0, step, mainH);
-    ctx.strokeStyle = 'rgba(6,182,212,0.3)'; ctx.lineWidth = 1; ctx.setLineDash([4,4]);
+    ctx.strokeStyle = 'rgba(6,182,212,0.3)'; ctx.lineWidth = 1; ctx.setLineDash([4, 4]);
     ctx.beginPath(); ctx.moveTo(xOf(hoverIdx), 0); ctx.lineTo(xOf(hoverIdx), H); ctx.stroke();
     ctx.setLineDash([]);
     const bar = data[hoverIdx];
     if (bar) {
-      document.getElementById('cib-open').textContent  = '$' + bar.open.toLocaleString();
-      document.getElementById('cib-high').textContent  = '$' + bar.high.toLocaleString();
-      document.getElementById('cib-low').textContent   = '$' + bar.low.toLocaleString();
+      document.getElementById('cib-open').textContent = '$' + bar.open.toLocaleString();
+      document.getElementById('cib-high').textContent = '$' + bar.high.toLocaleString();
+      document.getElementById('cib-low').textContent = '$' + bar.low.toLocaleString();
       document.getElementById('cib-close').textContent = '$' + bar.close.toLocaleString();
-      document.getElementById('cib-vol').textContent   = bar.vol.toLocaleString();
+      document.getElementById('cib-vol').textContent = bar.vol.toLocaleString();
     }
   } else {
-    const last = data[n-1];
+    const last = data[n - 1];
     if (last) {
-      document.getElementById('cib-open').textContent  = '$' + last.open.toLocaleString();
-      document.getElementById('cib-high').textContent  = '$' + last.high.toLocaleString();
-      document.getElementById('cib-low').textContent   = '$' + last.low.toLocaleString();
+      document.getElementById('cib-open').textContent = '$' + last.open.toLocaleString();
+      document.getElementById('cib-high').textContent = '$' + last.high.toLocaleString();
+      document.getElementById('cib-low').textContent = '$' + last.low.toLocaleString();
       document.getElementById('cib-close').textContent = '$' + last.close.toLocaleString();
-      document.getElementById('cib-vol').textContent   = last.vol.toLocaleString();
+      document.getElementById('cib-vol').textContent = last.vol.toLocaleString();
     }
   }
 
   // Info strip indicators
-  const lastSMA = sma20[n-1];
+  const lastSMA = sma20[n - 1];
   document.getElementById('cib-ma20').textContent = lastSMA ? '$' + lastSMA.toFixed(dec) : '—';
   const lastRSI = rsiArr.filter(v => v != null).slice(-1)[0];
   if (lastRSI != null) {
     document.getElementById('cib-rsi').textContent = lastRSI.toFixed(1);
     document.getElementById('cib-rsi').style.color = lastRSI > 70 ? 'var(--red)' : lastRSI < 30 ? 'var(--emerald)' : 'var(--amber)';
   }
-  const lastMACD = macd.line[n-1] || 0;
+  const lastMACD = macd.line[n - 1] || 0;
   document.getElementById('cib-macd').textContent = (lastMACD >= 0 ? '+' : '') + lastMACD.toFixed(3);
   document.getElementById('cib-macd').style.color = lastMACD >= 0 ? 'var(--emerald)' : 'var(--red)';
 
@@ -1014,7 +1000,7 @@ function drawChart() {
     [70, 30, 50].forEach(v => {
       const ry = rsiScale(v);
       ctx.strokeStyle = v === 50 ? 'rgba(255,255,255,0.04)' : v === 70 ? 'rgba(244,63,94,0.2)' : 'rgba(16,185,129,0.2)';
-      ctx.lineWidth = 0.8; ctx.setLineDash(v === 50 ? [2,4] : []);
+      ctx.lineWidth = 0.8; ctx.setLineDash(v === 50 ? [2, 4] : []);
       ctx.beginPath(); ctx.moveTo(0, ry); ctx.lineTo(chartW, ry); ctx.stroke(); ctx.setLineDash([]);
       ctx.fillStyle = '#2d4466'; ctx.textAlign = 'left'; ctx.fillText(v, chartW + 4, ry + 3);
     });
@@ -1040,12 +1026,12 @@ function drawChart() {
       const v = macd.hist[i] || 0;
       ctx.fillStyle = v >= 0 ? 'rgba(16,185,129,0.35)' : 'rgba(244,63,94,0.35)';
       const y0 = midY, y1 = macdScale(v);
-      ctx.fillRect(i * step + step * 0.15, Math.min(y0,y1), candleW, Math.abs(y0-y1));
+      ctx.fillRect(i * step + step * 0.15, Math.min(y0, y1), candleW, Math.abs(y0 - y1));
     }
-    [[macd.line,'rgba(6,182,212,0.8)'],[macd.signal,'rgba(245,158,11,0.7)']].forEach(([arr,col]) => {
+    [[macd.line, 'rgba(6,182,212,0.8)'], [macd.signal, 'rgba(245,158,11,0.7)']].forEach(([arr, col]) => {
       ctx.strokeStyle = col; ctx.lineWidth = 1.1; ctx.beginPath(); let s = false;
       for (let i = 0; i < n; i++) {
-        const p = [xOf(i), macdScale(arr[i]||0)];
+        const p = [xOf(i), macdScale(arr[i] || 0)];
         if (!s) { ctx.moveTo(...p); s = true; } else ctx.lineTo(...p);
       }
       ctx.stroke();
@@ -1079,25 +1065,25 @@ function generateCEXOrderbook() {
   let askHTML = '', bidHTML = '';
   for (let i = 6; i >= 1; i--) {
     const price = mid + half + i * mid * 0.00014;
-    const size  = Math.random() * (100 / Math.sqrt(i));
-    const pct   = Math.min((size / 80) * 100, 100);
+    const size = Math.random() * (100 / Math.sqrt(i));
+    const pct = Math.min((size / 80) * 100, 100);
     askHTML += `<div class="ob-row"><div class="ob-bar ask" style="width:${pct}%"></div>
       <span class="ob-cell ob-ask-price">${price.toFixed(dec)}</span>
       <span class="ob-cell text-muted">${size.toFixed(3)}</span>
-      <span class="ob-cell text-muted">${(price*size).toLocaleString(undefined,{maximumFractionDigits:0})}</span></div>`;
+      <span class="ob-cell text-muted">${(price * size).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></div>`;
   }
   for (let i = 1; i <= 6; i++) {
     const price = mid - half - i * mid * 0.00014;
-    const size  = Math.random() * (100 / Math.sqrt(i));
-    const pct   = Math.min((size / 80) * 100, 100);
+    const size = Math.random() * (100 / Math.sqrt(i));
+    const pct = Math.min((size / 80) * 100, 100);
     bidHTML += `<div class="ob-row"><div class="ob-bar bid" style="width:${pct}%"></div>
       <span class="ob-cell ob-bid-price">${price.toFixed(dec)}</span>
       <span class="ob-cell text-muted">${size.toFixed(3)}</span>
-      <span class="ob-cell text-muted">${(price*size).toLocaleString(undefined,{maximumFractionDigits:0})}</span></div>`;
+      <span class="ob-cell text-muted">${(price * size).toLocaleString(undefined, { maximumFractionDigits: 0 })}</span></div>`;
   }
   document.getElementById('ob-asks').innerHTML = askHTML;
   document.getElementById('ob-bids').innerHTML = bidHTML;
-  document.getElementById('ob-spread').innerHTML = `<span class="ob-mid-price">$${mid.toLocaleString()}</span>Spread: $${spread.toFixed(dec)} · ${((spread/mid)*100).toFixed(3)}%`;
+  document.getElementById('ob-spread').innerHTML = `<span class="ob-mid-price">$${mid.toLocaleString()}</span>Spread: $${spread.toFixed(dec)} · ${((spread / mid) * 100).toFixed(3)}%`;
 }
 
 // ============================================================
@@ -1107,7 +1093,7 @@ function createDEXTrade() {
   const asset = STATE.assets[STATE.activeAsset];
   if (!asset) return;
   const isBuy = Math.random() > 0.48;
-  const timeStr = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
+  const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
   let amount = Math.random() * (asset.symbol.includes('BTC') ? 3 : asset.symbol.includes('SOL') ? 200 : 80);
   STATE.dexTrades.unshift(`<div class="dex-row">
     <span class="text-muted">${timeStr}</span>
@@ -1137,7 +1123,7 @@ function renderIndicesStrip() {
         ${isLive ? '<span class="idx-live-dot"></span>' : ''}
       </div>
       <div class="idx-price" style="color:${isUp ? 'var(--emerald)' : 'var(--red)'}">
-        ${idx.symbol === '^VIX' ? '' : '$'}${asset.currentPrice.toLocaleString(undefined, {minimumFractionDigits:asset.dec, maximumFractionDigits:asset.dec})}
+        ${idx.symbol === '^VIX' ? '' : '$'}${asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: asset.dec, maximumFractionDigits: asset.dec })}
       </div>
       <div class="idx-change" style="color:${isUp ? 'var(--emerald)' : 'var(--red)'}">
         ${isUp ? '▲' : '▼'} ${Math.abs(asset.change).toFixed(2)}%
@@ -1151,29 +1137,29 @@ function getStockSignal(asset) {
     // Simple heuristic from change %
     const c = asset.change;
     if (c > 2.5) return { signal: 'STRONG BUY', cls: 'ab-buy', conf: 85 };
-    if (c > 0.5) return { signal: 'BUY',         cls: 'ab-buy', conf: 72 };
-    if (c < -2.5){ return { signal: 'STRONG SELL',cls: 'ab-sell',conf: 82 }; }
-    if (c < -0.5){ return { signal: 'SELL',       cls: 'ab-sell',conf: 68 }; }
+    if (c > 0.5) return { signal: 'BUY', cls: 'ab-buy', conf: 72 };
+    if (c < -2.5) { return { signal: 'STRONG SELL', cls: 'ab-sell', conf: 82 }; }
+    if (c < -0.5) { return { signal: 'SELL', cls: 'ab-sell', conf: 68 }; }
     return { signal: 'HOLD', cls: 'ab-hold', conf: 60 };
   }
-  const rsi  = calcRSI(asset.history, 14).filter(v => v != null);
+  const rsi = calcRSI(asset.history, 14).filter(v => v != null);
   const macd = calcMACD(asset.history);
-  const n    = asset.history.length;
-  const r    = rsi[rsi.length - 1] || 50;
-  const mLine = macd.line[n-1] || 0;
-  const mSig  = macd.signal[n-1] || 0;
+  const n = asset.history.length;
+  const r = rsi[rsi.length - 1] || 50;
+  const mLine = macd.line[n - 1] || 0;
+  const mSig = macd.signal[n - 1] || 0;
   const bullish = mLine > mSig && r < 70;
   const oversold = r < 30;
   const overbought = r > 70;
   if (oversold && mLine > mSig) return { signal: 'STRONG BUY', cls: 'ab-buy', conf: 88 };
-  if (bullish)  return { signal: 'BUY',         cls: 'ab-buy',  conf: Math.round(65 + Math.random()*15) };
-  if (overbought) return { signal: 'SELL',      cls: 'ab-sell', conf: Math.round(65 + Math.random()*15) };
-  if (mLine < mSig && asset.change < 0) return { signal: 'SELL', cls: 'ab-sell', conf: Math.round(62 + Math.random()*12) };
-  return { signal: 'HOLD', cls: 'ab-hold', conf: Math.round(55 + Math.random()*15) };
+  if (bullish) return { signal: 'BUY', cls: 'ab-buy', conf: Math.round(65 + Math.random() * 15) };
+  if (overbought) return { signal: 'SELL', cls: 'ab-sell', conf: Math.round(65 + Math.random() * 15) };
+  if (mLine < mSig && asset.change < 0) return { signal: 'SELL', cls: 'ab-sell', conf: Math.round(62 + Math.random() * 12) };
+  return { signal: 'HOLD', cls: 'ab-hold', conf: Math.round(55 + Math.random() * 15) };
 }
 
 function renderStocksSection() {
-  const ms   = getMarketStatus();
+  const ms = getMarketStatus();
   const tbody = document.getElementById('stock-screener-tbody');
   if (!tbody) return;
 
@@ -1182,16 +1168,16 @@ function renderStocksSection() {
     const asset = STATE.assets[s.symbol];
     if (!asset) return;
     const isUp = asset.change >= 0;
-    const sig  = getStockSignal(asset);
+    const sig = getStockSignal(asset);
     const isLive = asset.dataSource === 'live';
     const statusTxt = ms.status === 'open' ? '🟢 Open' :
-                      ms.status === 'pre-market' ? '🟡 Pre-Mkt' :
-                      ms.status === 'after-hours' ? '🟠 After-Hrs' : '🔴 Closed';
+      ms.status === 'pre-market' ? '🟡 Pre-Mkt' :
+        ms.status === 'after-hours' ? '🟠 After-Hrs' : '🔴 Closed';
 
     html += `<tr class="stock-row" data-symbol="${s.symbol}">
       <td>
         <div style="display:flex;align-items:center;gap:0.5rem;">
-          <div style="width:26px;height:26px;border-radius:5px;background:${s.color}22;color:${s.color};display:grid;place-items:center;font-size:0.65rem;font-weight:800;flex-shrink:0;">${s.symbol.slice(0,2)}</div>
+          <div style="width:26px;height:26px;border-radius:5px;background:${s.color}22;color:${s.color};display:grid;place-items:center;font-size:0.65rem;font-weight:800;flex-shrink:0;">${s.symbol.slice(0, 2)}</div>
           <div>
             <div style="font-weight:700;font-size:0.8rem;">${s.symbol}</div>
             <div style="font-size:0.6rem;color:var(--text-muted);">${s.sector}</div>
@@ -1201,7 +1187,7 @@ function renderStocksSection() {
       <td style="font-size:0.72rem;color:var(--text-secondary);">${s.company}</td>
       <td>
         <div style="font-weight:700;font-family:var(--font-mono);font-size:0.82rem;">
-          $${asset.currentPrice.toLocaleString(undefined,{minimumFractionDigits:2,maximumFractionDigits:2})}
+          $${asset.currentPrice.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
           ${isLive ? '<span style="font-size:0.55rem;color:var(--emerald);margin-left:3px;">LIVE</span>' : ''}
         </div>
       </td>
@@ -1229,27 +1215,27 @@ function renderStocksSection() {
 // SENTIMENT ENGINE
 // ============================================================
 const NEWS_TEMPLATES = [
-  { text:'Whale wallet moved 450 BTC to Coinbase. Potential distribution signal.', impact:-4, source:'ChainSentinel' },
-  { text:'Fed signals rate cuts ahead of FOMC. Macro turns risk-on for risk assets.', impact:7, source:'VoxMedia' },
-  { text:'VC fund commits $2.5B to Web3 infrastructure across Solana and Ethereum.', impact:5, source:'VoxMedia' },
-  { text:'Funding rates spike — highest over-leverage since Q1 2024. Long squeeze risk.', impact:-4, source:'ChainSentinel' },
-  { text:'RSI divergence on SOL-PERP 15m suggests local top near $185. Take-profit zone.', impact:-2, source:'Aegis' },
-  { text:'Uniswap DAO votes to activate protocol fee switch. Heavy accumulation.', impact:6, source:'ChainSentinel' },
-  { text:'NVIDIA chip revenue forecast beats estimates by 28%. Tech rally incoming.', impact:4, source:'VoxMedia' },
-  { text:'MEV sandwich vulnerability drains $1.2M from DEX arbitrage pool.', impact:-5, source:'ChainSentinel' },
-  { text:'MACD gold crossover confirmed on BTC daily. Historically bullish pattern.', impact:5, source:'Aegis' },
-  { text:'Liquidation cascade wipes $120M OI. Market deleveraging in progress.', impact:-3, source:'Aegis' },
-  { text:'SEC Commissioner comments positively on spot ETF framework. Market surges.', impact:8, source:'VoxMedia' },
-  { text:'Stablecoin supply grows $4.2B week-over-week — dry powder accumulating.', impact:5, source:'ChainSentinel' },
-  { text:'Twitter mentions of BTC up 22% in past hour. Retail FOMO signals emerging.', impact:3, source:'VoxPopulist' },
-  { text:'Open interest on BTC-PERP reaches ATH. Elevated risk of volatile liquidation.', impact:-3, source:'Aegis' },
+  { text: 'Whale wallet moved 450 BTC to Coinbase. Potential distribution signal.', impact: -4, source: 'ChainSentinel' },
+  { text: 'Fed signals rate cuts ahead of FOMC. Macro turns risk-on for risk assets.', impact: 7, source: 'VoxMedia' },
+  { text: 'VC fund commits $2.5B to Web3 infrastructure across Solana and Ethereum.', impact: 5, source: 'VoxMedia' },
+  { text: 'Funding rates spike — highest over-leverage since Q1 2024. Long squeeze risk.', impact: -4, source: 'ChainSentinel' },
+  { text: 'RSI divergence on SOL-PERP 15m suggests local top near $185. Take-profit zone.', impact: -2, source: 'Aegis' },
+  { text: 'Uniswap DAO votes to activate protocol fee switch. Heavy accumulation.', impact: 6, source: 'ChainSentinel' },
+  { text: 'NVIDIA chip revenue forecast beats estimates by 28%. Tech rally incoming.', impact: 4, source: 'VoxMedia' },
+  { text: 'MEV sandwich vulnerability drains $1.2M from DEX arbitrage pool.', impact: -5, source: 'ChainSentinel' },
+  { text: 'MACD gold crossover confirmed on BTC daily. Historically bullish pattern.', impact: 5, source: 'Aegis' },
+  { text: 'Liquidation cascade wipes $120M OI. Market deleveraging in progress.', impact: -3, source: 'Aegis' },
+  { text: 'SEC Commissioner comments positively on spot ETF framework. Market surges.', impact: 8, source: 'VoxMedia' },
+  { text: 'Stablecoin supply grows $4.2B week-over-week — dry powder accumulating.', impact: 5, source: 'ChainSentinel' },
+  { text: 'Twitter mentions of BTC up 22% in past hour. Retail FOMO signals emerging.', impact: 3, source: 'VoxPopulist' },
+  { text: 'Open interest on BTC-PERP reaches ATH. Elevated risk of volatile liquidation.', impact: -3, source: 'Aegis' },
 ];
 
 function tickSentiment() {
   if (Math.random() < 0.22) {
     const tmpl = NEWS_TEMPLATES[Math.floor(Math.random() * NEWS_TEMPLATES.length)];
     const isBull = tmpl.impact >= 0;
-    const timeStr = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'});
+    const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
     STATE.sentimentIndex = Math.max(10, Math.min(92, STATE.sentimentIndex + tmpl.impact));
     STATE.fearGreed = Math.max(5, Math.min(95, STATE.fearGreed + tmpl.impact * 0.4));
 
@@ -1272,8 +1258,8 @@ function tickSentiment() {
       pctLabel.style.color = STATE.sentimentIndex > 60 ? 'var(--emerald)' : STATE.sentimentIndex < 40 ? 'var(--red)' : 'var(--amber)';
     }
 
-    const src = ['src-twitter','src-reddit','src-news','src-chain'];
-    const srcEl = document.getElementById(src[Math.floor(Math.random()*src.length)]);
+    const src = ['src-twitter', 'src-reddit', 'src-news', 'src-chain'];
+    const srcEl = document.getElementById(src[Math.floor(Math.random() * src.length)]);
     if (srcEl) {
       const curr = parseInt(srcEl.textContent) + (isBull ? 1 : -1) * Math.ceil(Math.random() * 3);
       srcEl.textContent = (curr >= 0 ? '+' : '') + curr;
@@ -1290,7 +1276,7 @@ function tickSentiment() {
 for (let i = NEWS_TEMPLATES.length - 1; i >= 0; i--) {
   const t = NEWS_TEMPLATES[i];
   const isBull = t.impact >= 0;
-  const ts = new Date(Date.now() - i * 90000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'});
+  const ts = new Date(Date.now() - i * 90000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' });
   STATE.newsFeed.push(`<div class="news-item"><div class="ni-header"><span class="ni-source">${t.source}</span><span class="ni-time">${ts}</span></div><div class="ni-text">${t.text}</div><div class="ni-impact" style="color:${isBull ? 'var(--emerald)' : 'var(--red)'}">Impact: ${isBull ? '+' : ''}${t.impact}%</div></div>`);
 }
 document.getElementById('news-feed').innerHTML = STATE.newsFeed.join('');
@@ -1320,15 +1306,15 @@ function generateAlpha(customAsset = null, forceAction = null) {
   const marketOpen = ['open', 'pre-market', 'after-hours'].includes(ms.status);
 
   // Separate keys: crypto is always allowed; stocks only when market is open
-  const cryptoKeys = Object.keys(STATE.assets).filter(k => ['perp','dex','cex'].includes(STATE.assets[k].type));
-  const stockKeys  = Object.keys(STATE.assets).filter(k => ['stock'].includes(STATE.assets[k].type) && !['SPY','QQQ','^DJI','^VIX','^IXIC'].includes(k));
+  const cryptoKeys = Object.keys(STATE.assets).filter(k => ['perp', 'dex', 'cex'].includes(STATE.assets[k].type));
+  const stockKeys = Object.keys(STATE.assets).filter(k => ['stock'].includes(STATE.assets[k].type) && !['SPY', 'QQQ', '^DJI', '^VIX', '^IXIC'].includes(k));
 
   let eligibleKeys;
   if (customAsset) {
     const a = STATE.assets[customAsset];
     // If custom asset is a stock and market is closed, refuse
-    if (a && ['stock','index'].includes(a.type) && !marketOpen) {
-      showToast({ type:'warning', icon:'🔴', title:'Market Closed', msg:`Cannot generate ${customAsset} signal — US market is closed.` });
+    if (a && ['stock', 'index'].includes(a.type) && !marketOpen) {
+      showToast({ type: 'warning', icon: '🔴', title: 'Market Closed', msg: `Cannot generate ${customAsset} signal — US market is closed.` });
       return;
     }
     eligibleKeys = [customAsset];
@@ -1337,26 +1323,26 @@ function generateAlpha(customAsset = null, forceAction = null) {
     if (!eligibleKeys.length) return;
   }
 
-  const key   = customAsset || eligibleKeys[Math.floor(Math.random() * eligibleKeys.length)];
+  const key = customAsset || eligibleKeys[Math.floor(Math.random() * eligibleKeys.length)];
   const asset = STATE.assets[key];
   if (!asset) return;
 
-  const isBuy  = forceAction ? forceAction === 'BUY' : Math.random() > 0.42;
+  const isBuy = forceAction ? forceAction === 'BUY' : Math.random() > 0.42;
   const action = isBuy ? 'BUY' : 'SELL';
-  const dec    = asset.dec;
-  const entry  = asset.currentPrice;
+  const dec = asset.dec;
+  const entry = asset.currentPrice;
   const target = isBuy ? entry * (1 + 0.065 + Math.random() * 0.04) : entry * (1 - 0.055 - Math.random() * 0.03);
-  const stop   = isBuy ? entry * (1 - 0.025 - Math.random() * 0.01) : entry * (1 + 0.025 + Math.random() * 0.01);
-  const conf   = Math.round(68 + Math.random() * 28);
+  const stop = isBuy ? entry * (1 - 0.025 - Math.random() * 0.01) : entry * (1 + 0.025 + Math.random() * 0.01);
+  const conf = Math.round(68 + Math.random() * 28);
   const reasons = isBuy ? REASONS_BUY : REASONS_SELL;
-  const reason  = reasons[Math.floor(Math.random() * reasons.length)];
+  const reason = reasons[Math.floor(Math.random() * reasons.length)];
   const rr = Math.abs(target - entry) / Math.abs(stop - entry);
 
   // Tag as crypto-only if no stock access
-  const marketNote = ['stock','index'].includes(asset.type) && ms.status !== 'open' ? ` [${ms.label}]` : '';
+  const marketNote = ['stock', 'index'].includes(asset.type) && ms.status !== 'open' ? ` [${ms.label}]` : '';
 
   const opp = {
-    time: new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'}),
+    time: new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' }),
     asset: asset.symbol, action, entry, target, stop, conf,
     reason: reason + marketNote,
     rr: rr.toFixed(1), dec,
@@ -1368,38 +1354,6 @@ function generateAlpha(customAsset = null, forceAction = null) {
   STATE.agentSignalCount.aegis++;
   if (Math.random() > 0.5) STATE.agentSignalCount.predictor++;
   updateAgentSignalCounts();
-  
-  // Register active trade in Veritas for performance evaluation
-  if (STATE.veritas) {
-    const trade = {
-      id: 't_' + Date.now() + '_' + Math.floor(Math.random() * 1000),
-      asset: asset.symbol,
-      assetType: asset.type,
-      action: action,
-      entry: entry,
-      target: target,
-      stop: stop,
-      status: 'ACTIVE',
-      openTime: opp.time,
-      closeTime: null,
-      exitPrice: null,
-      pnl: 0,
-      dec: asset.dec
-    };
-    STATE.veritas.activeTrades.push(trade);
-    
-    // Log registration to Veritas agent console
-    const log = {
-      time: opp.time,
-      agent: 'veritas',
-      msg: `Registered new live signal for ${asset.symbol} (${action} @ $${entry.toLocaleString(undefined, {minimumFractionDigits: asset.dec})}). Evaluating performance...`
-    };
-    STATE.agentLogs.veritas.push(log);
-    if (STATE.agentLogs.veritas.length > 60) STATE.agentLogs.veritas.shift();
-    if (STATE.activeAgent === 'veritas') appendTerminalLine(log);
-    STATE.agentSignalCount.veritas++;
-  }
-  
   renderOpportunities();
   updateAlphaBadge();
   sendTelegramAlert(opp);
@@ -1407,7 +1361,7 @@ function generateAlpha(customAsset = null, forceAction = null) {
 }
 
 function updateAgentSignalCounts() {
-  ['aegis','sentinel','vox','predictor','veritas'].forEach(k => {
+  ['aegis', 'sentinel', 'vox', 'predictor'].forEach(k => {
     const el = document.getElementById('sigs-' + k);
     if (el) el.textContent = STATE.agentSignalCount[k];
   });
@@ -1430,9 +1384,9 @@ function renderOpportunities() {
     }
   }
 
-  const list = STATE.oppFilter === 'buy'  ? STATE.opportunities.filter(o => o.action === 'BUY') :
-               STATE.oppFilter === 'sell' ? STATE.opportunities.filter(o => o.action === 'SELL') :
-               STATE.opportunities;
+  const list = STATE.oppFilter === 'buy' ? STATE.opportunities.filter(o => o.action === 'BUY') :
+    STATE.oppFilter === 'sell' ? STATE.opportunities.filter(o => o.action === 'SELL') :
+      STATE.opportunities;
 
   let html = '';
   if (!list.length) {
@@ -1440,8 +1394,8 @@ function renderOpportunities() {
   } else {
     list.forEach((o, idx) => {
       const bc = o.action === 'BUY' ? 'ab-buy' : 'ab-sell';
-      const typeLabel = { perp:'Perp', dex:'DEX', cex:'CEX', stock:'Stock', index:'Index' }[o.assetType] || o.assetType || '';
-      const typeColor = ['stock','index'].includes(o.assetType) ? 'var(--amber)' : 'var(--cyan)';
+      const typeLabel = { perp: 'Perp', dex: 'DEX', cex: 'CEX', stock: 'Stock', index: 'Index' }[o.assetType] || o.assetType || '';
+      const typeColor = ['stock', 'index'].includes(o.assetType) ? 'var(--amber)' : 'var(--cyan)';
       html += `<tr class="${idx === 0 ? 'new-row' : ''}">
         <td class="text-muted text-mono" style="font-size:0.7rem;">${o.time}</td>
         <td>
@@ -1514,16 +1468,6 @@ const AGENT_LOGS = {
     'Triggering BUY alpha for NVDA: BB squeeze + positive sentiment.',
     'Multi-asset correlation: BTC leading ETH by ~15min lag currently.',
     'Recalibrating Monte Carlo simulation with latest on-chain data.',
-  ],
-  veritas: [
-    'Evaluating historical signal accuracy for BTC-PERP strategy overlays.',
-    'Calculating rolling Sharpe Ratio. Current confidence score: 84.6%.',
-    'Running volatility-adjusted drawdown stress tests on Perp markets.',
-    'Analyzing win-rate decay curve across equity and crypto sectors.',
-    'Verifying risk-adjusted returns matrix. No variance deviation detected.',
-    'Monte Carlo simulation running for 10,000 runs on local indicators.',
-    'Validating predictive value of social sentiment features vs RSI rebounds.',
-    'Calculating profit factor covariance on active asset signals.'
   ]
 };
 
@@ -1544,27 +1488,20 @@ function switchTerminal(agentKey) {
   document.getElementById('active-agent-label').textContent = agentKey.toUpperCase();
   terminalEl.innerHTML = '';
   STATE.agentLogs[agentKey].slice(-30).forEach(l => appendTerminalLine(l));
-  
-  // Automatically switch tab view on Veritas card selection
-  if (agentKey === 'veritas') {
-    switchAlphaTab('veritas');
-  } else {
-    switchAlphaTab('signals');
-  }
 }
 
 function streamAgentLogs() {
   if (!STATE.agentsRunning) return;
   Object.keys(AGENT_LOGS).forEach(k => {
     if (Math.random() < 0.28) {
-      const timeStr = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
+      const timeStr = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
       const msgs = AGENT_LOGS[k];
       const msg = msgs[Math.floor(Math.random() * msgs.length)];
       const log = { time: timeStr, agent: k, msg };
       STATE.agentLogs[k].push(log);
       if (STATE.agentLogs[k].length > 60) STATE.agentLogs[k].shift();
       const confEl = document.getElementById('conf-' + k);
-      const barEl  = document.getElementById('bar-' + k);
+      const barEl = document.getElementById('bar-' + k);
       if (confEl) {
         let c = parseInt(confEl.textContent);
         c = Math.max(55, Math.min(97, c + (Math.random() > 0.5 ? 1 : -1)));
@@ -1578,8 +1515,8 @@ function streamAgentLogs() {
 
 Object.keys(AGENT_LOGS).forEach(k => {
   for (let i = 0; i < 6; i++) {
-    const ts = new Date(Date.now() - (6-i)*12000).toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-    STATE.agentLogs[k].push({ time:ts, agent:k, msg: AGENT_LOGS[k][Math.floor(Math.random()*AGENT_LOGS[k].length)] });
+    const ts = new Date(Date.now() - (6 - i) * 12000).toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    STATE.agentLogs[k].push({ time: ts, agent: k, msg: AGENT_LOGS[k][Math.floor(Math.random() * AGENT_LOGS[k].length)] });
   }
 });
 switchTerminal('aegis');
@@ -1587,7 +1524,7 @@ switchTerminal('aegis');
 // ============================================================
 // PREDICTORX CHAT
 // ============================================================
-const chatEl    = document.getElementById('chat-messages');
+const chatEl = document.getElementById('chat-messages');
 const chatInput = document.getElementById('chat-input');
 
 function sendChat(customText) {
@@ -1613,24 +1550,24 @@ function sendChat(customText) {
     const reply = buildForecastResponse(q, asset);
     const agentMsg = document.createElement('div');
     agentMsg.className = 'msg agent';
-    agentMsg.innerHTML = `<div class="msg-bubble">${reply}</div><span class="msg-meta">PredictorX · ${new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit'})}</span>`;
+    agentMsg.innerHTML = `<div class="msg-bubble">${reply}</div><span class="msg-meta">PredictorX · ${new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit' })}</span>`;
     chatEl.appendChild(agentMsg);
     chatEl.scrollTop = chatEl.scrollHeight;
   }, 800 + Math.random() * 600);
 }
 
 function buildForecastResponse(query, asset) {
-  const { symbol, currentPrice:price, change, dec, history } = asset;
+  const { symbol, currentPrice: price, change, dec, history } = asset;
   const changeStr = (change >= 0 ? '+' : '') + change.toFixed(2) + '%';
   const n = history.length;
-  const sma20 = n >= 20 ? (calcSMA(history, 20)[n-1] || price) : price;
+  const sma20 = n >= 20 ? (calcSMA(history, 20)[n - 1] || price) : price;
   const bb = n >= 20 ? calcBB(history, 20, 2) : null;
-  const bbU = bb ? (bb.upper[n-1] || price * 1.02) : price * 1.02;
-  const bbL = bb ? (bb.lower[n-1] || price * 0.98) : price * 0.98;
-  const rsi  = n >= 14 ? (calcRSI(history, 14)[n-1] || 52) : 52;
+  const bbU = bb ? (bb.upper[n - 1] || price * 1.02) : price * 1.02;
+  const bbL = bb ? (bb.lower[n - 1] || price * 0.98) : price * 0.98;
+  const rsi = n >= 14 ? (calcRSI(history, 14)[n - 1] || 52) : 52;
   const macd = n >= 26 ? calcMACD(history) : null;
-  const macdLine = macd ? (macd.line[n-1] || 0) : 0;
-  const macdSig  = macd ? (macd.signal[n-1] || 0) : 0;
+  const macdLine = macd ? (macd.line[n - 1] || 0) : 0;
+  const macdSig = macd ? (macd.signal[n - 1] || 0) : 0;
   const conf = Math.round(72 + Math.random() * 22);
   const lq = query.toLowerCase();
   const src = asset.dataSource === 'live' ? '🟢 LIVE' : '🟡 SIMULATED';
@@ -1671,8 +1608,8 @@ Market is in a ${rsi > 55 ? 'distribution phase near resistance' : rsi < 45 ? 'a
   } else if (lq.includes('whale') || lq.includes('on-chain') || lq.includes('liquidity')) {
     body = `<strong>On-Chain & Liquidity — ${symbol}</strong><br><br>
 ${asset.type === 'stock'
-  ? 'Institutional bid pressure detected. Market makers maintaining tight two-sided liquidity. Options flow shows hedging activity.'
-  : `DEX pool scan: ${asset.tvl ? 'TVL at $' + asset.tvl + 'M' : 'N/A'}.<br>Exchange net outflows over 24h remain positive — bullish supply signal.<br>${asset.fundingRate != null ? 'Funding rate: ' + (asset.fundingRate >= 0 ? '+' : '') + asset.fundingRate + '% — ' + (asset.fundingRate > 0.03 ? 'over-leverage risk ⚠️' : 'healthy levels ✅') : ''}`}`;
+        ? 'Institutional bid pressure detected. Market makers maintaining tight two-sided liquidity. Options flow shows hedging activity.'
+        : `DEX pool scan: ${asset.tvl ? 'TVL at $' + asset.tvl + 'M' : 'N/A'}.<br>Exchange net outflows over 24h remain positive — bullish supply signal.<br>${asset.fundingRate != null ? 'Funding rate: ' + (asset.fundingRate >= 0 ? '+' : '') + asset.fundingRate + '% — ' + (asset.fundingRate > 0.03 ? 'over-leverage risk ⚠️' : 'healthy levels ✅') : ''}`}`;
   } else if (lq.includes('risk') || lq.includes('entry') || lq.includes('long') || lq.includes('short')) {
     const risk = rsi > 68 ? 'HIGH' : rsi < 35 ? 'LOW (oversold)' : 'MODERATE';
     const rc = rsi > 68 ? 'var(--red)' : rsi < 35 ? 'var(--emerald)' : 'var(--amber)';
@@ -1686,7 +1623,7 @@ Risk: <span style="color:${rc};font-weight:700;">${risk}</span> · Long: ${ok ? 
   } else {
     body = `<strong>General Analysis — ${symbol}</strong><br><br>
 Price: <strong>$${price.toLocaleString()}</strong> (${changeStr})<br>
-BB Width: ${((bbU-bbL)/price*100).toFixed(2)}% — ${(bbU-bbL)/price*100 < 2 ? 'volatility compression (breakout soon)' : 'normal volatility'}.<br>
+BB Width: ${((bbU - bbL) / price * 100).toFixed(2)}% — ${(bbU - bbL) / price * 100 < 2 ? 'volatility compression (breakout soon)' : 'normal volatility'}.<br>
 Momentum: ${rsi > 60 ? 'Overbought — caution' : rsi < 40 ? 'Oversold — watch bounce' : 'Neutral'}.<br>
 MACD: ${macdLine > macdSig ? 'Bullish crossover active' : 'Bearish signal present'}.`;
   }
@@ -1704,7 +1641,7 @@ document.getElementById('btn-clear-chat').addEventListener('click', () => {
 // ============================================================
 // TOAST SYSTEM
 // ============================================================
-function showToast({ type='info', icon='ℹ️', title, msg }) {
+function showToast({ type = 'info', icon = 'ℹ️', title, msg }) {
   const container = document.getElementById('toast-container');
   const toast = document.createElement('div');
   toast.className = 'toast ' + type;
@@ -1728,7 +1665,7 @@ function escapeHTML(str) {
 
 function sendTelegramAlert(opp) {
   if (localStorage.getItem('tg-enable') !== 'true') return;
-  const token  = localStorage.getItem('tg-bot-token');
+  const token = localStorage.getItem('tg-bot-token');
   const chatId = localStorage.getItem('tg-chat-id');
   if (!token || !chatId) return;
 
@@ -1745,27 +1682,27 @@ function sendTelegramAlert(opp) {
     + `<i>${escapeHTML(new Date().toLocaleString())}</i>`;
 
   fetch(`https://api.telegram.org/bot${token}/sendMessage`, {
-    method:'POST', headers:{'Content-Type':'application/json'},
-    body: JSON.stringify({ chat_id:chatId, text, parse_mode:'HTML' })
+    method: 'POST', headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ chat_id: chatId, text, parse_mode: 'HTML' })
   }).catch(e => console.error('Telegram send failed:', e));
 }
 
 function initTelegramModal() {
-  const tokenIn   = document.getElementById('tg-bot-token');
-  const chatIdIn  = document.getElementById('tg-chat-id');
-  const enableCb  = document.getElementById('tg-enable');
-  const saveBtn   = document.getElementById('btn-tg-save');
-  const testBtn   = document.getElementById('btn-tg-test');
+  const tokenIn = document.getElementById('tg-bot-token');
+  const chatIdIn = document.getElementById('tg-chat-id');
+  const enableCb = document.getElementById('tg-enable');
+  const saveBtn = document.getElementById('btn-tg-save');
+  const testBtn = document.getElementById('btn-tg-test');
   const detectBtn = document.getElementById('btn-tg-detect');
-  const statusEl  = document.getElementById('tg-detect-status');
-  const warnEl    = document.getElementById('tg-chat-id-warn');
-  const pill      = document.getElementById('tg-sidebar-pill');
+  const statusEl = document.getElementById('tg-detect-status');
+  const warnEl = document.getElementById('tg-chat-id-warn');
+  const pill = document.getElementById('tg-sidebar-pill');
   const pillLabel = document.getElementById('tg-pill-label');
-  const dot       = document.getElementById('tg-topbar-dot');
+  const dot = document.getElementById('tg-topbar-dot');
 
   // Load saved values
-  tokenIn.value    = localStorage.getItem('tg-bot-token') || '';
-  chatIdIn.value   = localStorage.getItem('tg-chat-id')   || '';
+  tokenIn.value = localStorage.getItem('tg-bot-token') || '';
+  chatIdIn.value = localStorage.getItem('tg-chat-id') || '';
   enableCb.checked = localStorage.getItem('tg-enable') === 'true';
 
   // Warn if @username entered
@@ -1789,9 +1726,9 @@ function initTelegramModal() {
   function showStatus(msg, type) {
     if (!statusEl) return;
     const colors = {
-      ok:    'background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:var(--emerald)',
+      ok: 'background:rgba(16,185,129,0.12);border:1px solid rgba(16,185,129,0.3);color:var(--emerald)',
       error: 'background:rgba(239,68,68,0.12);border:1px solid rgba(239,68,68,0.3);color:var(--red)',
-      info:  'background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.3);color:var(--cyan)'
+      info: 'background:rgba(6,182,212,0.12);border:1px solid rgba(6,182,212,0.3);color:var(--cyan)'
     };
     statusEl.style.cssText = (colors[type] || colors.info) + ';display:block;font-size:0.72rem;padding:0.5rem 0.75rem;border-radius:var(--r-md);margin-bottom:0.75rem;';
     statusEl.textContent = msg;
@@ -1809,7 +1746,7 @@ function initTelegramModal() {
     showStatus('⏳ Checking for messages sent to your bot…', 'info');
 
     try {
-      const res  = await fetch(`https://api.telegram.org/bot${t}/getUpdates?limit=10&allowed_updates=message`);
+      const res = await fetch(`https://api.telegram.org/bot${t}/getUpdates?limit=10&allowed_updates=message`);
       const data = await res.json();
 
       if (!data.ok) {
@@ -1854,23 +1791,23 @@ function initTelegramModal() {
     const t = tokenIn.value.trim();
     const c = chatIdIn.value.trim();
     if (!t || !c) {
-      showToast({ type:'error', icon:'❌', title:'Missing fields', msg:'Complete both Step 1 (Bot Token) and Step 2 (Chat ID).' });
+      showToast({ type: 'error', icon: '❌', title: 'Missing fields', msg: 'Complete both Step 1 (Bot Token) and Step 2 (Chat ID).' });
       return;
     }
     localStorage.setItem('tg-bot-token', t);
-    localStorage.setItem('tg-chat-id',   c);
-    localStorage.setItem('tg-enable',    enableCb.checked ? 'true' : 'false');
+    localStorage.setItem('tg-chat-id', c);
+    localStorage.setItem('tg-enable', enableCb.checked ? 'true' : 'false');
     document.getElementById('tg-modal').classList.remove('open');
     refreshTgUI();
-    showToast({ type:'info', icon:'✈️', title:'Telegram Configured', msg: enableCb.checked ? '✅ Alerts active! Alpha signals will be sent to your Telegram.' : 'Alerts disabled.' });
+    showToast({ type: 'info', icon: '✈️', title: 'Telegram Configured', msg: enableCb.checked ? '✅ Alerts active! Alpha signals will be sent to your Telegram.' : 'Alerts disabled.' });
   });
 
   // ── SEND TEST ──────────────────────────────────────────────────
   testBtn.addEventListener('click', () => {
     const t = tokenIn.value.trim();
     const c = chatIdIn.value.trim();
-    if (!t) { showToast({ type:'error', icon:'❌', title:'Missing Bot Token', msg:'Enter your Bot Token in Step 1 first.' }); return; }
-    if (!c) { showToast({ type:'error', icon:'❌', title:'Missing Chat ID', msg:'Use Auto-Detect (Step 2) or enter your numeric Chat ID.' }); return; }
+    if (!t) { showToast({ type: 'error', icon: '❌', title: 'Missing Bot Token', msg: 'Enter your Bot Token in Step 1 first.' }); return; }
+    if (!c) { showToast({ type: 'error', icon: '❌', title: 'Missing Chat ID', msg: 'Use Auto-Detect (Step 2) or enter your numeric Chat ID.' }); return; }
 
     testBtn.textContent = '⏳ Sending…';
     testBtn.disabled = true;
@@ -1884,37 +1821,37 @@ function initTelegramModal() {
         text: `⚡ <b>Aegis Quantum — Connection Test ✅</b>\n\nYour Telegram integration is working correctly!\n\nAlpha signals and market insights will now be delivered here automatically.\n\n<i>${escapeHTML(new Date().toLocaleString())}</i>`
       })
     })
-    .then(r => r.json())
-    .then(d => {
-      testBtn.textContent = '📨 Send Test';
-      testBtn.disabled = false;
-      if (d.ok) {
-        showToast({ type:'alpha', icon:'✅', title:'Test message sent!', msg:'Check your Telegram now.' });
-        showStatus('✅ Test message delivered successfully! You should see it in Telegram.', 'ok');
-      } else {
-        // Provide specific helpful messages for common errors
-        let hint = d.description || 'Unknown error';
-        if (hint.includes('chat not found')) {
-          hint = 'Chat not found. Make sure you sent /start to your bot in Telegram before testing!';
-        } else if (hint.includes('Unauthorized')) {
-          hint = 'Invalid Bot Token. Double-check the token you copied from @BotFather.';
-        } else if (hint.includes('blocked')) {
-          hint = 'You have blocked the bot. Open Telegram, find your bot, and click Unblock or Start.';
+      .then(r => r.json())
+      .then(d => {
+        testBtn.textContent = '📨 Send Test';
+        testBtn.disabled = false;
+        if (d.ok) {
+          showToast({ type: 'alpha', icon: '✅', title: 'Test message sent!', msg: 'Check your Telegram now.' });
+          showStatus('✅ Test message delivered successfully! You should see it in Telegram.', 'ok');
+        } else {
+          // Provide specific helpful messages for common errors
+          let hint = d.description || 'Unknown error';
+          if (hint.includes('chat not found')) {
+            hint = 'Chat not found. Make sure you sent /start to your bot in Telegram before testing!';
+          } else if (hint.includes('Unauthorized')) {
+            hint = 'Invalid Bot Token. Double-check the token you copied from @BotFather.';
+          } else if (hint.includes('blocked')) {
+            hint = 'You have blocked the bot. Open Telegram, find your bot, and click Unblock or Start.';
+          }
+          showToast({ type: 'error', icon: '❌', title: 'Telegram API error', msg: hint });
+          showStatus(`❌ ${hint}`, 'error');
         }
-        showToast({ type:'error', icon:'❌', title:'Telegram API error', msg: hint });
+      })
+      .catch(e => {
+        testBtn.textContent = '📨 Send Test';
+        testBtn.disabled = false;
+        let hint = e.message;
+        if (hint.includes('Failed to fetch') || hint.includes('NetworkError')) {
+          hint = 'Network blocked. Disable your adblocker / Brave Shield for this page and try again.';
+        }
+        showToast({ type: 'error', icon: '❌', title: 'Network error', msg: hint });
         showStatus(`❌ ${hint}`, 'error');
-      }
-    })
-    .catch(e => {
-      testBtn.textContent = '📨 Send Test';
-      testBtn.disabled = false;
-      let hint = e.message;
-      if (hint.includes('Failed to fetch') || hint.includes('NetworkError')) {
-        hint = 'Network blocked. Disable your adblocker / Brave Shield for this page and try again.';
-      }
-      showToast({ type:'error', icon:'❌', title:'Network error', msg: hint });
-      showStatus(`❌ ${hint}`, 'error');
-    });
+      });
   });
 
   // Close modal when clicking backdrop
@@ -1935,13 +1872,13 @@ function selectAsset(key, type) {
   const sidebarItem = document.querySelector(`.asset-item[data-asset="${key}"]`);
   if (sidebarItem) sidebarItem.classList.add('active');
 
-  STATE.activeAsset     = key;
+  STATE.activeAsset = key;
   STATE.activeAssetType = type || asset.type;
 
-  document.getElementById('hero-name').textContent  = key;
+  document.getElementById('hero-name').textContent = key;
   document.getElementById('hero-price').textContent = '$' + asset.currentPrice.toLocaleString();
-  document.getElementById('hero-type').textContent  = ({
-    perp:'Perpetual Contract', dex:'DEX Liquidity Pool', cex:'CEX Spot Market', stock:'Equity', index:'Market Index'
+  document.getElementById('hero-type').textContent = ({
+    perp: 'Perpetual Contract', dex: 'DEX Liquidity Pool', cex: 'CEX Spot Market', stock: 'Equity', index: 'Market Index'
   })[asset.type] || asset.type;
 
   const heroEl = document.getElementById('hero-icon');
@@ -1952,21 +1889,21 @@ function selectAsset(key, type) {
   if (asset.type === 'dex') setMarketView('dex');
   else setMarketView('cex');
 
-  const ts = new Date().toLocaleTimeString([],{hour:'2-digit',minute:'2-digit',second:'2-digit'});
-  const log = { time:ts, agent:'aegis', msg:`Asset switched to ${key}. Fetching ${asset.dataSource === 'live' ? 'live' : 'simulated'} chart data.` };
+  const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+  const log = { time: ts, agent: 'aegis', msg: `Asset switched to ${key}. Fetching ${asset.dataSource === 'live' ? 'live' : 'simulated'} chart data.` };
   STATE.agentLogs.aegis.push(log);
   if (STATE.activeAgent === 'aegis') appendTerminalLine(log);
 
   updateTopbar(); updateFooterBar(); generateCEXOrderbook();
 
   // Fetch real chart data
-  const isCrypto = ['perp','dex','cex'].includes(asset.type);
+  const isCrypto = ['perp', 'dex', 'cex'].includes(asset.type);
   if (isCrypto) {
     fetchBinanceKlines(key, STATE.activeTimeframe).then(ok => {
       if (ok) drawChart();
       else { buildSimulatedHistory(asset); drawChart(); }
     });
-  } else if (['stock','index'].includes(asset.type)) {
+  } else if (['stock', 'index'].includes(asset.type)) {
     fetchStockKlines(key, STATE.activeTimeframe).then(ok => {
       if (ok) drawChart();
       else { buildSimulatedHistory(asset); drawChart(); }
@@ -1999,7 +1936,7 @@ function setMarketView(v) {
   document.getElementById('btn-ob-cex').classList.toggle('active', isCex);
   document.getElementById('btn-ob-dex').classList.toggle('active', !isCex);
   document.getElementById('cex-ob-panel').style.display = isCex ? 'flex' : 'none';
-  document.getElementById('dex-ob-panel').style.display = isCex ? 'none'  : 'flex';
+  document.getElementById('dex-ob-panel').style.display = isCex ? 'none' : 'flex';
   document.getElementById('ob-card-title').textContent = isCex ? 'Order Book (CEX Depth)' : 'DEX Swap Feed';
   if (!isCex) document.getElementById('dex-trades-stream').innerHTML = STATE.dexTrades.join('');
 }
@@ -2026,7 +1963,7 @@ document.querySelectorAll('.timeframe-btn').forEach(btn => {
     STATE.activeTimeframe = btn.dataset.tf;
     // Re-fetch chart data for new timeframe
     const asset = STATE.assets[STATE.activeAsset];
-    const isCrypto = ['perp','dex','cex'].includes(asset?.type);
+    const isCrypto = ['perp', 'dex', 'cex'].includes(asset?.type);
     if (isCrypto) {
       fetchBinanceKlines(STATE.activeAsset, STATE.activeTimeframe).then(ok => {
         if (!ok) { buildSimulatedHistory(asset); drawChart(); }
@@ -2051,22 +1988,22 @@ function toggleAgents(running) {
   const pauseTopBtn = document.getElementById('btn-pause-agents');
   pauseBtn.textContent = running ? 'Pause All' : 'Resume All';
   pauseBtn.classList.toggle('active', running);
-  ['aegis','sentinel','vox','predictor','veritas'].forEach(k => {
+  ['aegis', 'sentinel', 'vox', 'predictor'].forEach(k => {
     const el = document.getElementById('status-' + k);
     if (el) { el.textContent = running ? '● Active' : '⏸ Paused'; el.className = 'ac-status ' + (running ? 'on' : 'off'); }
   });
   if (pauseTopBtn) pauseTopBtn.textContent = running ? '⏸' : '▶';
-  showToast({ type:'info', icon:running ? '▶️' : '⏸️', title:running ? 'Agents Resumed' : 'Agents Paused', msg: running ? 'All 4 AI agents are now active.' : 'All agents paused.' });
+  showToast({ type: 'info', icon: running ? '▶️' : '⏸️', title: running ? 'Agents Resumed' : 'Agents Paused', msg: running ? 'All 4 AI agents are now active.' : 'All agents paused.' });
 }
 
 document.getElementById('btn-agents-toggle').addEventListener('click', () => toggleAgents(!STATE.agentsRunning));
 document.getElementById('btn-pause-agents').addEventListener('click', () => toggleAgents(!STATE.agentsRunning));
 
-['f-all','f-buy','f-sell'].forEach(id => {
+['f-all', 'f-buy', 'f-sell'].forEach(id => {
   document.getElementById(id)?.addEventListener('click', e => {
     document.querySelectorAll('#opp-wrap .pill-btn').forEach(b => b.classList.remove('active'));
     e.target.classList.add('active');
-    STATE.oppFilter = {'f-all':'all','f-buy':'buy','f-sell':'sell'}[id];
+    STATE.oppFilter = { 'f-all': 'all', 'f-buy': 'buy', 'f-sell': 'sell' }[id];
     renderOpportunities();
   });
 });
@@ -2076,505 +2013,15 @@ document.getElementById('btn-pause-agents').addEventListener('click', () => togg
 // ============================================================
 function updateETClock() {
   const now = new Date();
-  const etStr = now.toLocaleTimeString('en-US', { timeZone:'America/New_York', hour:'2-digit', minute:'2-digit', second:'2-digit' });
+  const etStr = now.toLocaleTimeString('en-US', { timeZone: 'America/New_York', hour: '2-digit', minute: '2-digit', second: '2-digit' });
   const clockEl = document.getElementById('mkt-et-clock');
   if (clockEl) clockEl.textContent = `🕐 ${etStr} ET`;
 }
 
 // ============================================================
-// VERITAS PERFORMANCE EVALUATION ENGINE
-// ============================================================
-let currentAlphaTab = 'signals';
-let currentVeritasSubTab = 'stats';
-
-function seedHistoricalTrades() {
-  const assets = Object.keys(STATE.assets).filter(k => ['perp','stock'].includes(STATE.assets[k].type));
-  const now = Date.now();
-  let currentEquity = 10000;
-  let equityPctHistory = [0];
-  STATE.veritas.closedTrades = [];
-  
-  // Create 16 historical trades to simulate historical performance
-  for (let i = 16; i > 0; i--) {
-    const assetKey = assets[Math.floor(Math.random() * assets.length)];
-    const asset = STATE.assets[assetKey];
-    const isWin = Math.random() < 0.62; // ~62% win rate
-    const action = Math.random() > 0.5 ? 'BUY' : 'SELL';
-    const entry = asset.basePrice * (0.94 + Math.random() * 0.12);
-    
-    let target, stop, exitPrice, pnl;
-    
-    if (action === 'BUY') {
-      target = entry * 1.06;
-      stop = entry * 0.975;
-      if (isWin) {
-        exitPrice = target;
-        pnl = (target - entry) / entry;
-      } else {
-        exitPrice = stop;
-        pnl = (stop - entry) / entry;
-      }
-    } else { // SELL
-      target = entry * 0.94;
-      stop = entry * 1.025;
-      if (isWin) {
-        exitPrice = target;
-        pnl = (entry - target) / entry;
-      } else {
-        exitPrice = stop;
-        pnl = (entry - stop) / entry;
-      }
-    }
-    
-    const profitDollar = currentEquity * pnl;
-    currentEquity += profitDollar;
-    const roiPct = ((currentEquity - 10000) / 10000) * 100;
-    equityPctHistory.push(roiPct);
-    
-    const tradeTime = new Date(now - i * 4 * 3600 * 1000);
-    
-    const trade = {
-      id: 't_hist_' + i,
-      asset: asset.symbol,
-      assetType: asset.type,
-      action: action,
-      entry: +entry.toFixed(asset.dec),
-      target: +target.toFixed(asset.dec),
-      stop: +stop.toFixed(asset.dec),
-      exitPrice: +exitPrice.toFixed(asset.dec),
-      status: isWin ? 'WIN' : 'LOSS',
-      openTime: new Date(tradeTime - 2 * 3600 * 1000).toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),
-      closeTime: tradeTime.toLocaleTimeString([], {hour:'2-digit',minute:'2-digit'}),
-      pnl: pnl,
-      dec: asset.dec
-    };
-    
-    STATE.veritas.closedTrades.push(trade);
-  }
-  
-  STATE.veritas.equityHistory = equityPctHistory;
-  STATE.veritas.capital = currentEquity;
-}
-
-function calculateVeritasMetrics() {
-  const closed = STATE.veritas.closedTrades;
-  if (!closed.length) {
-    STATE.veritas.winRate = 0;
-    STATE.veritas.sharpeRatio = 0;
-    STATE.veritas.maxDrawdown = 0;
-    STATE.veritas.profitFactor = 0;
-    STATE.veritas.verdict = 'ACCUMULATING';
-    return;
-  }
-  
-  const wins = closed.filter(t => t.status === 'WIN');
-  const losses = closed.filter(t => t.status === 'LOSS');
-  
-  // 1. Win Rate
-  STATE.veritas.winRate = (wins.length / closed.length) * 100;
-  
-  // 2. Profit Factor
-  let grossProfit = wins.reduce((sum, t) => sum + t.pnl * 10000, 0);
-  let grossLoss = losses.reduce((sum, t) => sum + Math.abs(t.pnl) * 10000, 0);
-  STATE.veritas.profitFactor = grossLoss === 0 ? (grossProfit > 0 ? 9.99 : 0) : grossProfit / grossLoss;
-  
-  // 3. Max Drawdown
-  let balance = 10000;
-  let peak = 10000;
-  let maxDD = 0;
-  const equityPctHistory = [0];
-  
-  closed.forEach(t => {
-    balance += 10000 * t.pnl;
-    if (balance > peak) peak = balance;
-    const dd = ((peak - balance) / peak) * 100;
-    if (dd > maxDD) maxDD = dd;
-    equityPctHistory.push(((balance - 10000) / 10000) * 100);
-  });
-  
-  STATE.veritas.maxDrawdown = maxDD;
-  STATE.veritas.equityHistory = equityPctHistory;
-  
-  // 4. Sharpe Ratio
-  const returns = closed.map(t => t.pnl);
-  const meanReturn = returns.reduce((a, b) => a + b, 0) / returns.length;
-  const variance = returns.reduce((a, b) => a + (b - meanReturn) ** 2, 0) / returns.length;
-  const stdDev = Math.sqrt(variance);
-  STATE.veritas.sharpeRatio = stdDev === 0 ? 0 : (meanReturn / stdDev) * Math.sqrt(252 / 6); // scaled for validation periodicity
-  if (STATE.veritas.sharpeRatio < 0) STATE.veritas.sharpeRatio = 0;
-  
-  // 5. Verdict
-  if (closed.length >= 10) {
-    if (STATE.veritas.winRate >= 54 && STATE.veritas.sharpeRatio >= 1.2 && STATE.veritas.profitFactor >= 1.4) {
-      STATE.veritas.verdict = 'APPROVED';
-    } else if (STATE.veritas.winRate < 46 || STATE.veritas.sharpeRatio < 0.7 || STATE.veritas.profitFactor < 1.05) {
-      STATE.veritas.verdict = 'REJECTED';
-    } else {
-      STATE.veritas.verdict = 'MONITORING';
-    }
-  } else {
-    STATE.veritas.verdict = 'ACCUMULATING';
-  }
-}
-
-function checkActiveTrades(asset, currentPrice) {
-  if (!STATE.veritas || !STATE.veritas.activeTrades.length) return;
-  
-  const remaining = [];
-  let metricsUpdated = false;
-  
-  STATE.veritas.activeTrades.forEach(trade => {
-    if (trade.asset !== asset.symbol) {
-      remaining.push(trade);
-      return;
-    }
-    
-    let resolved = false;
-    let outcome = '';
-    let pnl = 0;
-    
-    if (trade.action === 'BUY') {
-      if (currentPrice >= trade.target) {
-        resolved = true;
-        outcome = 'WIN';
-        pnl = (trade.target - trade.entry) / trade.entry;
-      } else if (currentPrice <= trade.stop) {
-        resolved = true;
-        outcome = 'LOSS';
-        pnl = (trade.stop - trade.entry) / trade.entry;
-      }
-    } else { // SELL
-      if (currentPrice <= trade.target) {
-        resolved = true;
-        outcome = 'WIN';
-        pnl = (trade.entry - trade.target) / trade.entry;
-      } else if (currentPrice >= trade.stop) {
-        resolved = true;
-        outcome = 'LOSS';
-        pnl = (trade.entry - trade.stop) / trade.entry;
-      }
-    }
-    
-    if (resolved) {
-      trade.status = outcome;
-      trade.exitPrice = outcome === 'WIN' ? trade.target : trade.stop;
-      trade.closeTime = new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'});
-      trade.pnl = pnl;
-      
-      STATE.veritas.closedTrades.push(trade);
-      if (STATE.veritas.closedTrades.length > 50) STATE.veritas.closedTrades.shift();
-      
-      metricsUpdated = true;
-      
-      // Log to Veritas console
-      const logMsg = `Trade resolved: ${trade.asset} (${trade.action}) hit ${outcome === 'WIN' ? 'target' : 'stop-loss'} at $${trade.exitPrice.toLocaleString(undefined, {minimumFractionDigits: trade.dec})}. PnL: ${(pnl * 100).toFixed(2)}%`;
-      const log = {
-        time: new Date().toLocaleTimeString([], {hour:'2-digit',minute:'2-digit',second:'2-digit'}),
-        agent: 'veritas',
-        msg: logMsg
-      };
-      
-      STATE.agentLogs.veritas.push(log);
-      if (STATE.agentLogs.veritas.length > 60) STATE.agentLogs.veritas.shift();
-      if (STATE.activeAgent === 'veritas') {
-        appendTerminalLine(log);
-      }
-      
-      // Update Veritas agent stats
-      STATE.agentSignalCount.veritas++;
-      
-      // Show toast
-      showToast({
-        type: outcome === 'WIN' ? 'info' : 'warning',
-        icon: '🛡️',
-        title: `Veritas Validation`,
-        msg: `${trade.asset} ${outcome === 'WIN' ? 'hit target' : 'hit stop'} for ${(pnl * 100).toFixed(2)}% ROI.`
-      });
-    } else {
-      remaining.push(trade);
-    }
-  });
-  
-  if (metricsUpdated) {
-    STATE.veritas.activeTrades = remaining;
-    calculateVeritasMetrics();
-    updateVeritasUI();
-    updateAgentSignalCounts();
-  }
-}
-
-function updateVeritasUI() {
-  const sidebarWinrate = document.getElementById('sigs-veritas-winrate');
-  const sidebarCount = document.getElementById('sigs-veritas-count');
-  const sidebarSharpe = document.getElementById('sigs-veritas-sharpe');
-  const sidebarBarFill = document.getElementById('bar-veritas');
-  
-  if (sidebarWinrate) sidebarWinrate.textContent = STATE.veritas.winRate.toFixed(1) + '%';
-  if (sidebarCount) sidebarCount.textContent = STATE.veritas.closedTrades.length;
-  if (sidebarSharpe) sidebarSharpe.textContent = STATE.veritas.sharpeRatio.toFixed(2);
-  if (sidebarBarFill) sidebarBarFill.style.width = STATE.veritas.winRate.toFixed(0) + '%';
-  
-  const mWinrate = document.getElementById('v-metric-winrate');
-  const mWinrateDetail = document.getElementById('v-metric-winrate-detail');
-  const mRoi = document.getElementById('v-metric-roi');
-  const mRoiDetail = document.getElementById('v-metric-roi-detail');
-  const mSharpe = document.getElementById('v-metric-sharpe');
-  const mSharpeDetail = document.getElementById('v-metric-sharpe-detail');
-  const mDrawdown = document.getElementById('v-metric-drawdown');
-  const mDrawdownDetail = document.getElementById('v-metric-drawdown-detail');
-  const mProfitFactor = document.getElementById('v-metric-profitfactor');
-  const mProfitFactorDetail = document.getElementById('v-metric-profitfactor-detail');
-  
-  const closed = STATE.veritas.closedTrades;
-  const wins = closed.filter(t => t.status === 'WIN');
-  const losses = closed.filter(t => t.status === 'LOSS');
-  
-  if (mWinrate) mWinrate.textContent = STATE.veritas.winRate.toFixed(1) + '%';
-  if (mWinrateDetail) mWinrateDetail.textContent = `${wins.length} Wins / ${losses.length} Losses`;
-  
-  const roiPct = ((STATE.veritas.capital - 10000) / 10000) * 100;
-  if (mRoi) {
-    mRoi.textContent = (roiPct >= 0 ? '+' : '') + roiPct.toFixed(2) + '%';
-    mRoi.style.color = roiPct >= 0 ? 'var(--emerald)' : 'var(--red)';
-  }
-  if (mRoiDetail) mRoiDetail.textContent = `Capital: $${STATE.veritas.capital.toLocaleString(undefined, {minimumFractionDigits: 0, maximumFractionDigits: 0})}`;
-  
-  if (mSharpe) mSharpe.textContent = STATE.veritas.sharpeRatio.toFixed(2);
-  if (mSharpeDetail) {
-    if (STATE.veritas.sharpeRatio >= 2.0) mSharpeDetail.textContent = 'Excellent Edge';
-    else if (STATE.veritas.sharpeRatio >= 1.4) mSharpeDetail.textContent = 'Strong Edge';
-    else if (STATE.veritas.sharpeRatio >= 1.0) mSharpeDetail.textContent = 'Moderate Edge';
-    else mSharpeDetail.textContent = 'Weak Edge';
-  }
-  
-  if (mDrawdown) mDrawdown.textContent = STATE.veritas.maxDrawdown.toFixed(1) + '%';
-  if (mDrawdownDetail) mDrawdownDetail.textContent = 'Peak-to-Trough risk';
-  
-  if (mProfitFactor) mProfitFactor.textContent = STATE.veritas.profitFactor.toFixed(2);
-  if (mProfitFactorDetail) mProfitFactorDetail.textContent = 'Gross Win / Loss';
-  
-  const verdictBanner = document.getElementById('veritas-verdict-banner');
-  const verdictBadge = document.getElementById('veritas-verdict-badge');
-  const statusDesc = document.getElementById('veritas-status-desc');
-  
-  if (verdictBadge) {
-    verdictBadge.textContent = STATE.veritas.verdict;
-    verdictBadge.className = 'action-badge ' + (
-      STATE.veritas.verdict === 'APPROVED' ? 'ab-buy' :
-      STATE.veritas.verdict === 'REJECTED' ? 'ab-sell' : 'ab-hold'
-    );
-  }
-  
-  if (verdictBanner) {
-    if (STATE.veritas.verdict === 'APPROVED') {
-      verdictBanner.style.borderColor = 'rgba(16,185,129,0.3)';
-      verdictBanner.style.background = 'rgba(16,185,129,0.05)';
-      if (statusDesc) statusDesc.textContent = 'Strategy verified with high predictive edge. APPROVED for live execution.';
-    } else if (STATE.veritas.verdict === 'REJECTED') {
-      verdictBanner.style.borderColor = 'rgba(244,63,94,0.3)';
-      verdictBanner.style.background = 'rgba(244,63,94,0.05)';
-      if (statusDesc) statusDesc.textContent = 'Strategy rejected due to poor risk-adjusted returns or excessive drawdown.';
-    } else if (STATE.veritas.verdict === 'MONITORING') {
-      verdictBanner.style.borderColor = 'rgba(245,158,11,0.3)';
-      verdictBanner.style.background = 'rgba(245,158,11,0.05)';
-      if (statusDesc) statusDesc.textContent = 'Strategy shows mild performance. Retesting parameters under monitoring.';
-    } else {
-      verdictBanner.style.borderColor = 'rgba(139,92,246,0.3)';
-      verdictBanner.style.background = 'rgba(139,92,246,0.05)';
-      if (statusDesc) statusDesc.textContent = 'Accumulating historical trade signals for strategy validation...';
-    }
-  }
-  
-  const tbody = document.getElementById('veritas-trades-tbody');
-  if (tbody) {
-    if (!closed.length) {
-      tbody.innerHTML = `<tr><td colspan="7" style="text-align:center;color:var(--text-muted);padding:1.5rem;">No closed trades yet. Waiting for signals to resolve.</td></tr>`;
-    } else {
-      let html = '';
-      [...closed].reverse().forEach(t => {
-        const outcomeClass = t.status === 'WIN' ? 'price-up' : 'price-down';
-        const returnClass = t.pnl >= 0 ? 'price-up' : 'price-down';
-        const typeLabel = { perp:'Perp', dex:'DEX', cex:'CEX', stock:'Stock', index:'Index' }[t.assetType] || t.assetType || '';
-        const typeColor = ['stock','index'].includes(t.assetType) ? 'var(--amber)' : 'var(--cyan)';
-        
-        html += `<tr>
-          <td class="text-muted text-mono">${t.closeTime}</td>
-          <td>
-            <span style="font-weight:700;color:var(--cyan);">${t.asset}</span>
-            <span style="display:inline-block;margin-left:4px;font-size:0.55rem;padding:0.05rem 0.3rem;border-radius:3px;background:${typeColor}18;color:${typeColor};border:1px solid ${typeColor}40;font-weight:700;">${typeLabel}</span>
-          </td>
-          <td><span class="action-badge ${t.action === 'BUY' ? 'ab-buy' : 'ab-sell'}">${t.action}</span></td>
-          <td class="text-mono">$${t.entry.toLocaleString(undefined, {minimumFractionDigits: t.dec})}</td>
-          <td class="text-mono">$${t.exitPrice.toLocaleString(undefined, {minimumFractionDigits: t.dec})}</td>
-          <td style="font-weight:700;" class="${outcomeClass}">${t.status === 'WIN' ? '🎯 Target Hit' : '⚠️ Stop Loss'}</td>
-          <td style="font-weight:700;" class="text-mono ${returnClass}">${t.pnl >= 0 ? '+' : ''}${(t.pnl * 100).toFixed(2)}%</td>
-        </tr>`;
-      });
-      tbody.innerHTML = html;
-    }
-  }
-  
-  if (currentAlphaTab === 'veritas' && currentVeritasSubTab === 'chart') {
-    drawVeritasEquityChart();
-  }
-}
-
-function drawVeritasEquityChart() {
-  const chartCanvas = document.getElementById('veritas-equity-chart');
-  if (!chartCanvas) return;
-  
-  const ctx = chartCanvas.getContext('2d');
-  const dpr = window.devicePixelRatio || 1;
-  const w = chartCanvas.clientWidth;
-  const h = chartCanvas.clientHeight;
-  
-  chartCanvas.width = w * dpr;
-  chartCanvas.height = h * dpr;
-  ctx.scale(dpr, dpr);
-  
-  ctx.clearRect(0, 0, w, h);
-  
-  const data = STATE.veritas.equityHistory || [0];
-  const n = data.length;
-  if (n < 2) return;
-  
-  let maxVal = Math.max(...data, 1);
-  let minVal = Math.min(...data, -1);
-  const padding = (maxVal - minVal) * 0.1 || 1;
-  maxVal += padding;
-  minVal -= padding;
-  
-  const scaleX = i => 42 + (i / (n - 1)) * (w - 75);
-  const scaleY = v => 15 + (1 - (v - minVal) / (maxVal - minVal)) * (h - 30);
-  
-  ctx.strokeStyle = 'rgba(255, 255, 255, 0.03)';
-  ctx.lineWidth = 1;
-  ctx.font = '8px var(--font-mono)';
-  ctx.fillStyle = 'var(--text-secondary)';
-  ctx.textAlign = 'right';
-  
-  const gridCount = 4;
-  for (let i = 0; i <= gridCount; i++) {
-    const val = minVal + (i / gridCount) * (maxVal - minVal);
-    const y = scaleY(val);
-    
-    ctx.beginPath();
-    ctx.moveTo(42, y);
-    ctx.lineTo(w - 15, y);
-    ctx.stroke();
-    
-    ctx.fillText((val >= 0 ? '+' : '') + val.toFixed(1) + '%', 36, y + 3);
-  }
-  
-  ctx.beginPath();
-  ctx.moveTo(scaleX(0), scaleY(data[0]));
-  for (let i = 1; i < n; i++) {
-    ctx.lineTo(scaleX(i), scaleY(data[i]));
-  }
-  
-  ctx.save();
-  ctx.strokeStyle = '#8b5cf6';
-  ctx.lineWidth = 2;
-  ctx.shadowColor = 'rgba(139, 92, 246, 0.5)';
-  ctx.shadowBlur = 8;
-  ctx.stroke();
-  ctx.restore();
-  
-  const fillGrad = ctx.createLinearGradient(0, 0, 0, h);
-  fillGrad.addColorStop(0, 'rgba(139, 92, 246, 0.12)');
-  fillGrad.addColorStop(1, 'rgba(139, 92, 246, 0)');
-  
-  ctx.beginPath();
-  ctx.moveTo(scaleX(0), h - 15);
-  ctx.lineTo(scaleX(0), scaleY(data[0]));
-  for (let i = 1; i < n; i++) {
-    ctx.lineTo(scaleX(i), scaleY(data[i]));
-  }
-  ctx.lineTo(scaleX(n - 1), h - 15);
-  ctx.closePath();
-  ctx.fillStyle = fillGrad;
-  ctx.fill();
-  
-  ctx.fillStyle = '#d946ef';
-  for (let i = 0; i < n; i++) {
-    ctx.beginPath();
-    ctx.arc(scaleX(i), scaleY(data[i]), i === n - 1 ? 3.5 : 2, 0, Math.PI * 2);
-    ctx.fill();
-  }
-}
-
-function switchAlphaTab(tabKey) {
-  currentAlphaTab = tabKey;
-  
-  const signalsTitle = document.getElementById('alpha-terminal-title');
-  const veritasTitle = document.getElementById('veritas-terminal-title');
-  const signalsActions = document.getElementById('signals-action-group');
-  const veritasActions = document.getElementById('veritas-action-group');
-  const oppWrap = document.getElementById('opp-wrap');
-  const veritasWrap = document.getElementById('veritas-wrap');
-  const termCard = document.getElementById('alpha-terminal-card');
-  
-  if (tabKey === 'signals') {
-    if (signalsTitle) { signalsTitle.style.color = 'var(--text-primary)'; signalsTitle.style.opacity = '1'; }
-    if (veritasTitle) { veritasTitle.style.color = 'var(--text-secondary)'; veritasTitle.style.opacity = '0.65'; }
-    if (signalsActions) signalsActions.style.display = 'flex';
-    if (veritasActions) veritasActions.style.display = 'none';
-    if (oppWrap) oppWrap.style.display = 'block';
-    if (veritasWrap) veritasWrap.style.display = 'none';
-    
-    if (termCard) {
-      termCard.classList.remove('accent-violet', 'card-glow-violet');
-      termCard.classList.add('accent-emerald', 'card-glow-emerald');
-    }
-  } else {
-    if (signalsTitle) { signalsTitle.style.color = 'var(--text-secondary)'; signalsTitle.style.opacity = '0.65'; }
-    if (veritasTitle) { veritasTitle.style.color = 'var(--text-primary)'; veritasTitle.style.opacity = '1'; }
-    if (signalsActions) signalsActions.style.display = 'none';
-    if (veritasActions) veritasActions.style.display = 'flex';
-    if (oppWrap) oppWrap.style.display = 'none';
-    if (veritasWrap) veritasWrap.style.display = 'flex';
-    
-    if (termCard) {
-      termCard.classList.remove('accent-emerald', 'card-glow-emerald');
-      termCard.classList.add('accent-violet', 'card-glow-violet');
-    }
-    updateVeritasUI();
-  }
-}
-window.switchAlphaTab = switchAlphaTab;
-
-function switchVeritasSubTab(subTabKey) {
-  currentVeritasSubTab = subTabKey;
-  
-  const statsTab = document.getElementById('veritas-tab-stats');
-  const chartTab = document.getElementById('veritas-tab-chart');
-  const tradesTab = document.getElementById('veritas-tab-trades');
-  
-  const statsPanel = document.getElementById('veritas-panel-stats');
-  const chartPanel = document.getElementById('veritas-panel-chart');
-  const tradesPanel = document.getElementById('veritas-panel-trades');
-  
-  if (statsTab) statsTab.classList.toggle('active', subTabKey === 'stats');
-  if (chartTab) chartTab.classList.toggle('active', subTabKey === 'chart');
-  if (tradesTab) tradesTab.classList.toggle('active', subTabKey === 'trades');
-  
-  if (statsPanel) statsPanel.style.display = subTabKey === 'stats' ? 'flex' : 'none';
-  if (chartPanel) chartPanel.style.display = subTabKey === 'chart' ? 'flex' : 'none';
-  if (tradesPanel) tradesPanel.style.display = subTabKey === 'trades' ? 'flex' : 'none';
-  
-  if (subTabKey === 'chart') {
-    setTimeout(drawVeritasEquityChart, 50);
-  }
-}
-window.switchVeritasSubTab = switchVeritasSubTab;
-
-// ============================================================
 // INIT
 // ============================================================
 async function init() {
-  seedHistoricalTrades();
-  calculateVeritasMetrics();
-  updateVeritasUI();
   resizeCanvas();
   drawChart();
   generateCEXOrderbook();
@@ -2603,12 +2050,12 @@ async function init() {
   await fetchAllStockData();
 
   // Recurring intervals
-  setInterval(tickSimulatedCrypto,  900);   // only runs when Binance WS is down
-  setInterval(streamAgentLogs,      1600);
-  setInterval(createDEXTrade,       2200);
-  setInterval(tickSentiment,        3800);
+  setInterval(tickSimulatedCrypto, 900);   // only runs when Binance WS is down
+  setInterval(streamAgentLogs, 1600);
+  setInterval(createDEXTrade, 2200);
+  setInterval(tickSentiment, 3800);
   setInterval(generateCEXOrderbook, 1200);
-  setInterval(updateETClock,        1000);  // live ET clock
+  setInterval(updateETClock, 1000);  // live ET clock
   setInterval(updateMarketStatusUI, 30000); // market status refresh
   // Refresh stocks every 15s for near-real-time quotes
   setInterval(async () => {
@@ -2619,7 +2066,14 @@ async function init() {
   }, 16000);
 
   // Startup toast
-  setTimeout(() => showToast({ type:'info', icon:'⚡', title:'Aegis Quantum v3.0', msg:'Connecting to Binance & Yahoo Finance for live data…' }), 800);
+  setTimeout(() => showToast({ type: 'info', icon: '⚡', title: 'Aegis Quantum v3.0', msg: 'Connecting to Binance & Yahoo Finance for live data…' }), 800);
+}
+
+window.addEventListener('load', init);
+window.addEventListener('resize', () => { resizeCanvas(); drawChart(); });
+
+// Startup toast
+setTimeout(() => showToast({ type: 'info', icon: '⚡', title: 'Aegis Quantum v3.0', msg: 'Connecting to Binance & Yahoo Finance for live data…' }), 800);
 }
 
 window.addEventListener('load', init);
