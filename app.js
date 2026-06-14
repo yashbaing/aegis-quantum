@@ -1544,6 +1544,13 @@ function switchTerminal(agentKey) {
   document.getElementById('active-agent-label').textContent = agentKey.toUpperCase();
   terminalEl.innerHTML = '';
   STATE.agentLogs[agentKey].slice(-30).forEach(l => appendTerminalLine(l));
+  
+  // Automatically switch tab view on Veritas card selection
+  if (agentKey === 'veritas') {
+    switchAlphaTab('veritas');
+  } else {
+    switchAlphaTab('signals');
+  }
 }
 
 function streamAgentLogs() {
@@ -2044,7 +2051,7 @@ function toggleAgents(running) {
   const pauseTopBtn = document.getElementById('btn-pause-agents');
   pauseBtn.textContent = running ? 'Pause All' : 'Resume All';
   pauseBtn.classList.toggle('active', running);
-  ['aegis','sentinel','vox','predictor'].forEach(k => {
+  ['aegis','sentinel','vox','predictor','veritas'].forEach(k => {
     const el = document.getElementById('status-' + k);
     if (el) { el.textContent = running ? '● Active' : '⏸ Paused'; el.className = 'ac-status ' + (running ? 'on' : 'off'); }
   });
