@@ -841,18 +841,18 @@ export default function App() {
       if (trade.action === 'BUY') {
         if (currentPrice >= trade.target) {
           resolved = true; outcome = 'WIN';
-          pnl = (trade.target - trade.entry) / trade.entry;
+          pnl = (currentPrice - trade.entry) / trade.entry;
         } else if (currentPrice <= trade.stop) {
           resolved = true; outcome = 'LOSS';
-          pnl = (trade.stop - trade.entry) / trade.entry;
+          pnl = (currentPrice - trade.entry) / trade.entry;
         }
       } else {
         if (currentPrice <= trade.target) {
           resolved = true; outcome = 'WIN';
-          pnl = (trade.entry - trade.target) / trade.entry;
+          pnl = (trade.entry - currentPrice) / trade.entry;
         } else if (currentPrice >= trade.stop) {
           resolved = true; outcome = 'LOSS';
-          pnl = (trade.entry - trade.stop) / trade.entry;
+          pnl = (trade.entry - currentPrice) / trade.entry;
         }
       }
 
@@ -861,7 +861,7 @@ export default function App() {
         toClose.push({
           ...trade,
           status: outcome,
-          exitPrice: outcome === 'WIN' ? trade.target : trade.stop,
+          exitPrice: currentPrice,
           closeTime: closeTs,
           pnl
         });
