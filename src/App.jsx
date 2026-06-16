@@ -9,6 +9,18 @@ import SentimentMonitor from './components/SentimentMonitor';
 import ForecastTerminal from './components/ForecastTerminal';
 import StockScreener from './components/StockScreener';
 import TelegramModal from './components/TelegramModal';
+import {
+  initDB,
+  getSignals,
+  saveSignal,
+  getActiveTrades,
+  addActiveTrade,
+  deleteActiveTrade,
+  getClosedTrades,
+  addClosedTrade,
+  getSetting,
+  saveSetting
+} from './utils/db';
 
 // ============================================================
 // CONSTANTS & MAPS
@@ -380,6 +392,8 @@ export default function App() {
     verdict: 'ACCUMULATING'
   });
 
+  const [dbLoaded, setDbLoaded] = useState(false);
+
   const wsRef = useRef(null);
   const binanceRetries = useRef(0);
   // Refs for real-time trade evaluation (avoids stale closures in WS/timer callbacks)
@@ -527,6 +541,89 @@ export default function App() {
     setTelegramEnabled(localStorage.getItem('tg-enable') === 'true');
     setTgBotToken(localStorage.getItem('tg-bot-token') || '');
     setTgChatId(localStorage.getItem('tg-chat-id') || '');
+
+    // 7. Initialize IndexedDB database and load persistent data
+    initDB().then(() => {
+      // Load Settings (capital)
+      return getSetting('capital').then(cap => {
+        if (cap !== null) {
+          setVeritasMetrics(v => ({ ...v, capital: cap }));
+        } else {
+          saveSetting('capital', 10000);
+        }
+      }).then(() => {
+        // Load Signals
+        return getSignals().then(dbSignals => {
+          if (dbSignals.length > 0) {
+            setOpportunities(dbSignals.reverse());
+          }
+        });
+      }).then(() => {
+        // Load Active Trades
+        return getActiveTrades().then(dbActive => {
+          if (dbActive.length > 0) {
+            setVeritasMetrics(v => ({ ...v, activeTrades: dbActive }));
+            activeTradesRef.current = dbActive;
+          }
+        });
+      }).then(() => {
+        // Load Closed Trades
+        return getClosedTrades().then(dbClosed => {
+          if (dbClosed.length > 0) {
+            setVeritasMetrics(v => {
+              const wins = dbClosed.filter(t => t.status === 'WIN');
+              const losses = dbClosed.filter(t => t.status === 'LOSS');
+              const winRate = (wins.length / dbClosed.length) * 100;
+              const grossProfit = wins.reduce((sum, t) => sum + t.pnl * 10000, 0);
+              const grossLoss = losses.reduce((sum, t) => sum + Math.abs(t.pnl) * 10000, 0);
+              const profitFactor = grossLoss === 0 ? (grossProfit > 0 ? 9.99 : 0) : grossProfit / grossLoss;
+
+              let balance = 10000;
+              let peak = 10000;
+              let maxDD = 0;
+              const equityHistory = [0];
+              dbClosed.forEach(t => {
+                balance += 10000 * t.pnl;
+                if (balance > peak) peak = balance;
+                const dd = ((peak - balance) / peak) * 100;
+                if (dd > maxDD) maxDD = dd;
+                equityHistory.push(((balance - 10000) / 10000) * 100);
+              });
+
+              const returns = dbClosed.map(t => t.pnl);
+              const meanRet = returns.reduce((a, b) => a + b, 0) / returns.length;
+              const variance = returns.reduce((a, b) => a + (b - meanRet) ** 2, 0) / returns.length;
+              const stdDev = Math.sqrt(variance);
+              const sharpeRatio = stdDev === 0 ? 0 : (meanRet / stdDev) * Math.sqrt(252 / 6);
+
+              let verdict = 'ACCUMULATING';
+              if (dbClosed.length >= 5) {
+                if (winRate >= 54 && sharpeRatio >= 1.2 && profitFactor >= 1.4) verdict = 'APPROVED';
+                else if (winRate < 46 || sharpeRatio < 0.7 || profitFactor < 1.05) verdict = 'REJECTED';
+                else verdict = 'MONITORING';
+              }
+
+              return {
+                ...v,
+                closedTrades: dbClosed,
+                capital: balance,
+                equityHistory,
+                winRate,
+                profitFactor,
+                maxDrawdown: maxDD,
+                sharpeRatio,
+                verdict
+              };
+            });
+          }
+        });
+      }).then(() => {
+        setDbLoaded(true);
+      });
+    }).catch(err => {
+      console.error('Failed to load DB settings:', err);
+      setDbLoaded(true);
+    });
   }, []);
 
   // ============================================================
@@ -701,6 +798,8 @@ export default function App() {
         else verdict = 'MONITORING';
       }
 
+      saveSetting('capital', balance);
+
       return {
         ...prev,
         closedTrades: nextClosed,
@@ -775,6 +874,9 @@ export default function App() {
 
     // Flush closed trades into state
     toClose.forEach(closed => {
+      deleteActiveTrade(closed.id);
+      addClosedTrade(closed);
+
       const logMsg = `🎯 LIVE RESULT: ${closed.asset} (${closed.action}) ${closed.status === 'WIN' ? '✅ HIT TARGET' : '❌ STOPPED OUT'} @ $${closed.exitPrice.toLocaleString(undefined, { minimumFractionDigits: closed.dec })} | Entry: $${closed.entry.toLocaleString(undefined, { minimumFractionDigits: closed.dec })} | PnL: ${closed.pnl >= 0 ? '+' : ''}${(closed.pnl * 100).toFixed(2)}%`;
       const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
@@ -1273,6 +1375,7 @@ export default function App() {
         if (next.length > 40) next.pop();
         return next;
       });
+      saveSignal(opp);
 
       // Increment counters
       setAgentSignalCounts(c => {
@@ -1301,6 +1404,8 @@ export default function App() {
           pnl: 0,
           dec: asset.dec
         };
+
+        addActiveTrade(newTrade);
 
         setVeritasMetrics(v => {
           // Log Veritas console registering trade
@@ -1363,6 +1468,8 @@ export default function App() {
       dec: asset.dec
     };
 
+    addActiveTrade(newTrade);
+
     setVeritasMetrics(v => {
       const logMsg = `👤 MANUAL TRADE: Opened ${action} position for ${symbol} @ $${entry.toLocaleString(undefined, { minimumFractionDigits: asset.dec })}. Monitoring position...`;
       
@@ -1407,6 +1514,9 @@ export default function App() {
       pnl
     };
 
+    deleteActiveTrade(tradeId);
+    addClosedTrade(closed);
+
     const toKeep = trades.filter(t => t.id !== tradeId);
     activeTradesRef.current = toKeep;
 
@@ -1432,14 +1542,15 @@ export default function App() {
     setVeritasMetrics(prev => ({ ...prev, activeTrades: toKeep }));
   };
 
-  // Seed initial opportunities once assets are populated
+  // Seed initial opportunities once assets are populated and DB is loaded
   useEffect(() => {
-    if (Object.keys(assets).length === 0) return;
+    if (!dbLoaded || Object.keys(assets).length === 0) return;
+    if (opportunities.length > 0) return;
     const cryptoSeeds = ['BTC-PERP', 'ETH-PERP', 'SOL-PERP'];
     for (let i = 0; i < 6; i++) {
       generateAlphaSignal(cryptoSeeds[i % cryptoSeeds.length], null, false);
     }
-  }, [Object.keys(assets).length > 0]);
+  }, [Object.keys(assets).length > 0, dbLoaded]);
 
   // Interval for signal generation — every 8s for faster real-time results
   useEffect(() => {
