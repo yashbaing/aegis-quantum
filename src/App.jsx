@@ -9,6 +9,7 @@ import SentimentMonitor from './components/SentimentMonitor';
 import ForecastTerminal from './components/ForecastTerminal';
 import StockScreener from './components/StockScreener';
 import TelegramModal from './components/TelegramModal';
+import PortfolioDashboard from './components/PortfolioDashboard';
 import {
   initDB,
   getSignals,
@@ -393,6 +394,7 @@ export default function App() {
   });
 
   const [dbLoaded, setDbLoaded] = useState(false);
+  const [activeView, setActiveView] = useState('desk');
 
   const wsRef = useRef(null);
   const binanceRetries = useRef(0);
@@ -1681,6 +1683,8 @@ export default function App() {
         assets={assets}
         telegramEnabled={telegramEnabled}
         onOpenTelegramModal={() => setTgModalOpen(true)}
+        activeView={activeView}
+        onChangeView={setActiveView}
       />
 
       {/* TOPBAR PANEL */}
@@ -1702,9 +1706,12 @@ export default function App() {
 
       {/* WORKSPACE CONTENT GRID */}
       <main className="workspace">
-        
-        {/* ROW 1: Chart canvas + Analytical Agents Grid */}
-        <div className="ws-row ws-row-chart">
+        {activeView === 'portfolio' ? (
+          <PortfolioDashboard veritasMetrics={veritasMetrics} />
+        ) : (
+          <>
+            {/* ROW 1: Chart canvas + Analytical Agents Grid */}
+            <div className="ws-row ws-row-chart">
           {activeAssetObj && (
             <ChartSection
               activeAsset={activeAsset}
@@ -1870,6 +1877,8 @@ export default function App() {
               </span>
             </div>
           </div>
+        )}
+          </>
         )}
       </main>
 

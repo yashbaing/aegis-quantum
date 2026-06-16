@@ -26,7 +26,15 @@ const GROUPS = [
   { label: 'US Equities', type: 'stock', symbols: ['AAPL', 'MSFT', 'NVDA', 'TSLA', 'META', 'GOOGL', 'AMZN', 'AMD', 'COIN'] }
 ];
 
-export default function Sidebar({ activeAsset, onSelectAsset, assets, telegramEnabled, onOpenTelegramModal }) {
+export default function Sidebar({
+  activeAsset,
+  onSelectAsset,
+  assets,
+  telegramEnabled,
+  onOpenTelegramModal,
+  activeView,
+  onChangeView
+}) {
   const [searchQuery, setSearchQuery] = useState('');
 
   const handleSearchChange = (e) => {
@@ -40,6 +48,21 @@ export default function Sidebar({ activeAsset, onSelectAsset, assets, telegramEn
         <div className="logo-copy">
           <span className="logo-name">Aegis Quantum</span>
           <span className="logo-tagline">AI Market Intelligence · v3.0</span>
+        </div>
+      </div>
+
+      <div className="sidebar-menu">
+        <div
+          className={`menu-item ${activeView === 'desk' ? 'active' : ''}`}
+          onClick={() => onChangeView('desk')}
+        >
+          <span>🖥️</span> Trade Desk
+        </div>
+        <div
+          className={`menu-item ${activeView === 'portfolio' ? 'active' : ''}`}
+          onClick={() => onChangeView('portfolio')}
+        >
+          <span>📊</span> Portfolio Analytics
         </div>
       </div>
 
