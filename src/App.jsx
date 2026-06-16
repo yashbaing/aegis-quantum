@@ -1211,7 +1211,7 @@ export default function App() {
   // ------------------------------------------------------------
   // OPPORTUNITIES SIGNAL GENERATION
   // ------------------------------------------------------------
-  const generateAlphaSignal = (customSymbol = null, forceAction = null) => {
+  const generateAlphaSignal = (customSymbol = null, forceAction = null, registerTrade = true) => {
     const isClosed = marketStatusInfo.status === 'closed';
 
     setAssets(prevAssets => {
@@ -1284,40 +1284,42 @@ export default function App() {
         return nextCount;
       });
 
-      // Register Veritas Active Trade
-      const newTrade = {
-        id: `t_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
-        asset: asset.symbol,
-        assetType: asset.type,
-        action,
-        entry,
-        target,
-        stop,
-        status: 'ACTIVE',
-        openTime: ts,
-        closeTime: null,
-        exitPrice: null,
-        pnl: 0,
-        dec: asset.dec
-      };
-
-      setVeritasMetrics(v => {
-        // Log Veritas console registering trade
-        const logMsg = `Registered new live signal for ${asset.symbol} (${action} @ $${entry.toLocaleString(undefined, { minimumFractionDigits: asset.dec })}). Evaluating performance...`;
-        
-        setAgentLogs(l => {
-          const nextVeritasLogs = [...l.veritas, { time: ts, agent: 'veritas', msg: logMsg }];
-          if (nextVeritasLogs.length > 60) nextVeritasLogs.shift();
-          return { ...l, veritas: nextVeritasLogs };
-        });
-
-        setAgentSignalCounts(cnt => ({ ...cnt, veritas: cnt.veritas + 1 }));
-
-        return {
-          ...v,
-          activeTrades: [...v.activeTrades, newTrade]
+      if (registerTrade) {
+        // Register Veritas Active Trade
+        const newTrade = {
+          id: `t_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+          asset: asset.symbol,
+          assetType: asset.type,
+          action,
+          entry,
+          target,
+          stop,
+          status: 'ACTIVE',
+          openTime: ts,
+          closeTime: null,
+          exitPrice: null,
+          pnl: 0,
+          dec: asset.dec
         };
-      });
+
+        setVeritasMetrics(v => {
+          // Log Veritas console registering trade
+          const logMsg = `Registered new live signal for ${asset.symbol} (${action} @ $${entry.toLocaleString(undefined, { minimumFractionDigits: asset.dec })}). Evaluating performance...`;
+          
+          setAgentLogs(l => {
+            const nextVeritasLogs = [...l.veritas, { time: ts, agent: 'veritas', msg: logMsg }];
+            if (nextVeritasLogs.length > 60) nextVeritasLogs.shift();
+            return { ...l, veritas: nextVeritasLogs };
+          });
+
+          setAgentSignalCounts(cnt => ({ ...cnt, veritas: cnt.veritas + 1 }));
+
+          return {
+            ...v,
+            activeTrades: [...v.activeTrades, newTrade]
+          };
+        });
+      }
 
       // Trigger Telegram Alert
       sendTelegramAlert(opp);
@@ -1334,12 +1336,108 @@ export default function App() {
     });
   };
 
+  const handlePlaceTrade = (symbol, action) => {
+    const asset = assets[symbol];
+    if (!asset) return;
+
+    const entry = asset.currentPrice;
+    const isBuy = action === 'BUY';
+    const target = isBuy ? entry * (1 + 0.065 + Math.random() * 0.04) : entry * (1 - 0.055 - Math.random() * 0.03);
+    const stop = isBuy ? entry * (1 - 0.025 - Math.random() * 0.01) : entry * (1 + 0.025 + Math.random() * 0.01);
+    
+    const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    
+    const newTrade = {
+      id: `t_${Date.now()}_${Math.floor(Math.random() * 1000)}`,
+      asset: symbol,
+      assetType: asset.type,
+      action,
+      entry,
+      target,
+      stop,
+      status: 'ACTIVE',
+      openTime: ts,
+      closeTime: null,
+      exitPrice: null,
+      pnl: 0,
+      dec: asset.dec
+    };
+
+    setVeritasMetrics(v => {
+      const logMsg = `👤 MANUAL TRADE: Opened ${action} position for ${symbol} @ $${entry.toLocaleString(undefined, { minimumFractionDigits: asset.dec })}. Monitoring position...`;
+      
+      setAgentLogs(l => {
+        const nextVeritasLogs = [...l.veritas, { time: ts, agent: 'veritas', msg: logMsg }];
+        if (nextVeritasLogs.length > 60) nextVeritasLogs.shift();
+        return { ...l, veritas: nextVeritasLogs };
+      });
+
+      setAgentSignalCounts(cnt => ({ ...cnt, veritas: cnt.veritas + 1 }));
+
+      return {
+        ...v,
+        activeTrades: [...v.activeTrades, newTrade]
+      };
+    });
+
+    showToast({
+      type: isBuy ? 'alpha' : 'warning',
+      icon: isBuy ? '🎯' : '⚠️',
+      title: `Trade Placed: ${symbol}`,
+      msg: `Position: ${action} @ $${entry.toLocaleString(undefined, { minimumFractionDigits: asset.dec })}`
+    });
+  };
+
+  const handleClosePosition = (tradeId) => {
+    const trades = veritasMetrics.activeTrades;
+    const trade = trades.find(t => t.id === tradeId);
+    if (!trade) return;
+
+    const asset = assets[trade.asset];
+    const currentPrice = asset ? asset.currentPrice : trade.entry;
+    const isBuy = trade.action === 'BUY';
+    const pnl = isBuy ? (currentPrice - trade.entry) / trade.entry : (trade.entry - currentPrice) / trade.entry;
+
+    const closeTs = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+    const closed = {
+      ...trade,
+      status: pnl >= 0 ? 'WIN' : 'LOSS',
+      exitPrice: currentPrice,
+      closeTime: closeTs,
+      pnl
+    };
+
+    const toKeep = trades.filter(t => t.id !== tradeId);
+    activeTradesRef.current = toKeep;
+
+    const logMsg = `🎯 MANUAL CLOSE: ${closed.asset} (${closed.action}) closed manually @ $${closed.exitPrice.toLocaleString(undefined, { minimumFractionDigits: closed.dec })} | Entry: $${closed.entry.toLocaleString(undefined, { minimumFractionDigits: closed.dec })} | PnL: ${closed.pnl >= 0 ? '+' : ''}${(closed.pnl * 100).toFixed(2)}%`;
+    const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+
+    setAgentLogs(l => {
+      const next = [...l.veritas, { time: ts, agent: 'veritas', msg: logMsg }];
+      if (next.length > 60) next.shift();
+      return { ...l, veritas: next };
+    });
+
+    setAgentSignalCounts(c => ({ ...c, veritas: c.veritas + 1 }));
+
+    showToast({
+      type: closed.status === 'WIN' ? 'info' : 'warning',
+      icon: closed.status === 'WIN' ? '✅' : '❌',
+      title: `Veritas Closed Position`,
+      msg: `${closed.asset} closed manually · ${closed.pnl >= 0 ? '+' : ''}${(closed.pnl * 100).toFixed(2)}% ROI`
+    });
+
+    runVeritasCalculations(closed);
+    setVeritasMetrics(prev => ({ ...prev, activeTrades: toKeep }));
+  };
+
   // Seed initial opportunities once assets are populated
   useEffect(() => {
     if (Object.keys(assets).length === 0) return;
     const cryptoSeeds = ['BTC-PERP', 'ETH-PERP', 'SOL-PERP'];
     for (let i = 0; i < 6; i++) {
-      generateAlphaSignal(cryptoSeeds[i % cryptoSeeds.length]);
+      generateAlphaSignal(cryptoSeeds[i % cryptoSeeds.length], null, false);
     }
   }, [Object.keys(assets).length > 0]);
 
@@ -1550,6 +1648,9 @@ export default function App() {
             veritasMetrics={veritasMetrics}
             marketStatus={marketStatusInfo.status}
             onOpenTelegramModal={() => setTgModalOpen(true)}
+            assets={assets}
+            onPlaceTrade={handlePlaceTrade}
+            onClosePosition={handleClosePosition}
           />
         </div>
 

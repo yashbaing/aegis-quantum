@@ -1,4 +1,4 @@
-import React, { useRef, useEffect, useState } from 'react';
+import { useRef, useEffect, useState } from 'react';
 
 export default function OpportunityTerminal({
   opportunities,
@@ -10,7 +10,10 @@ export default function OpportunityTerminal({
   onChangeVeritasSubTab,
   veritasMetrics,
   marketStatus,
-  onOpenTelegramModal
+  onOpenTelegramModal,
+  assets,
+  onPlaceTrade,
+  onClosePosition
 }) {
   const equityCanvasRef = useRef(null);
   const [dimensions, setDimensions] = useState({ w: 0, h: 180 });
@@ -283,6 +286,12 @@ export default function OpportunityTerminal({
                 Metrics
               </button>
               <button
+                className={`pill-btn ${activeVeritasSubTab === 'positions' ? 'active' : ''}`}
+                onClick={() => onChangeVeritasSubTab('positions')}
+              >
+                Open Positions ({veritasMetrics.activeTrades.length})
+              </button>
+              <button
                 className={`pill-btn ${activeVeritasSubTab === 'chart' ? 'active' : ''}`}
                 onClick={() => onChangeVeritasSubTab('chart')}
               >
@@ -331,13 +340,14 @@ export default function OpportunityTerminal({
                 <th>Target</th>
                 <th>Stop</th>
                 <th>Conf.</th>
-                <th style={{ minWidth: '200px' }}>Rationale</th>
+                <th style={{ minWidth: '160px' }}>Rationale</th>
+                <th>Action</th>
               </tr>
             </thead>
             <tbody>
               {filteredOpps.length === 0 ? (
                 <tr>
-                  <td colSpan={7} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                  <td colSpan={8} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
                     No signals found matching filter rules. Scanning markets...
                   </td>
                 </tr>
@@ -389,8 +399,26 @@ export default function OpportunityTerminal({
                           </div>
                         </div>
                       </td>
-                      <td style={{ color: 'var(--text-secondary)', fontSize: '0.72rem', maxWidth: '220px' }}>
+                      <td style={{ color: 'var(--text-secondary)', fontSize: '0.72rem', maxWidth: '180px' }}>
                         {o.reason}
+                      </td>
+                      <td>
+                        <button
+                          className="pill-btn active"
+                          style={{
+                            padding: '0.2rem 0.45rem',
+                            fontSize: '0.65rem',
+                            background: 'var(--cyan-dim)',
+                            borderColor: 'rgba(6,182,212,0.3)',
+                            color: 'var(--cyan)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            gap: '0.2rem'
+                          }}
+                          onClick={() => onPlaceTrade(o.asset, o.action)}
+                        >
+                          ⚡ Trade
+                        </button>
                       </td>
                     </tr>
                   );
@@ -489,6 +517,104 @@ export default function OpportunityTerminal({
               <div style={{ flex: 1, position: 'relative', background: 'rgba(0,0,0,0.25)', border: '1px solid var(--border-1)', borderRadius: 'var(--r-md)', overflow: 'hidden' }}>
                 <canvas ref={equityCanvasRef} style={{ display: 'block', width: '100%', height: '100%' }} />
               </div>
+            </div>
+          )}
+
+          {/* ACTIVE POSITIONS PANEL */}
+          {activeVeritasSubTab === 'positions' && (
+            <div style={{ flex: 1, overflow: 'auto' }}>
+              <table className="opp-table" style={{ fontSize: '0.7rem' }}>
+                <thead>
+                  <tr>
+                    <th>Opened</th>
+                    <th>Asset</th>
+                    <th>Type</th>
+                    <th>Entry Price</th>
+                    <th>Current Price</th>
+                    <th>PnL</th>
+                    <th>Target</th>
+                    <th>Stop Loss</th>
+                    <th>Action</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {veritasMetrics.activeTrades.length === 0 ? (
+                    <tr>
+                      <td colSpan={9} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                        No active positions currently. Execute a signal from the Alpha Signals list!
+                      </td>
+                    </tr>
+                  ) : (
+                    [...veritasMetrics.activeTrades].reverse().map((t, idx) => {
+                      const currentPrice = (assets && assets[t.asset]?.currentPrice) || t.entry;
+                      const isBuy = t.action === 'BUY';
+                      const pnl = isBuy ? (currentPrice - t.entry) / t.entry : (t.entry - currentPrice) / t.entry;
+                      const pnlPct = pnl * 100;
+                      const typeLabel = t.assetType === 'perp' ? 'Perp' : t.assetType === 'dex' ? 'DEX' : t.assetType === 'cex' ? 'CEX' : t.assetType === 'stock' ? 'Stock' : 'Index';
+                      const typeColor = ['stock', 'index'].includes(t.assetType) ? 'var(--amber)' : 'var(--cyan)';
+
+                      return (
+                        <tr key={t.id || idx}>
+                          <td className="text-muted text-mono">{t.openTime}</td>
+                          <td>
+                            <span style={{ fontWeight: 700, color: 'var(--cyan)' }}>
+                              {t.asset === 'USDC/WETH' ? 'WETH/USDC' : t.asset}
+                            </span>
+                            <span style={{
+                              display: 'inline-block',
+                              marginLeft: '4px',
+                              fontSize: '0.55rem',
+                              padding: '0.05rem 0.3rem',
+                              borderRadius: '3px',
+                              background: `${typeColor}18`,
+                              color: typeColor,
+                              border: `1px solid ${typeColor}40`,
+                              fontWeight: 700
+                            }}>
+                              {typeLabel}
+                            </span>
+                          </td>
+                          <td>
+                            <span className={`action-badge ${isBuy ? 'ab-buy' : 'ab-sell'}`}>
+                              {t.action}
+                            </span>
+                          </td>
+                          <td className="text-mono">
+                            ${t.entry.toLocaleString(undefined, { minimumFractionDigits: t.dec, maximumFractionDigits: t.dec })}
+                          </td>
+                          <td className="text-mono">
+                            ${currentPrice.toLocaleString(undefined, { minimumFractionDigits: t.dec, maximumFractionDigits: t.dec })}
+                          </td>
+                          <td style={{ fontWeight: 700 }} className={`text-mono ${pnlPct >= 0 ? 'price-up' : 'price-down'}`}>
+                            {(pnlPct >= 0 ? '+' : '') + pnlPct.toFixed(2)}%
+                          </td>
+                          <td className="text-mono">
+                            ${t.target.toLocaleString(undefined, { minimumFractionDigits: t.dec, maximumFractionDigits: t.dec })}
+                          </td>
+                          <td className="text-mono" style={{ color: 'var(--red)' }}>
+                            ${t.stop.toLocaleString(undefined, { minimumFractionDigits: t.dec, maximumFractionDigits: t.dec })}
+                          </td>
+                          <td>
+                            <button
+                              className="pill-btn active"
+                              style={{
+                                padding: '0.2rem 0.45rem',
+                                fontSize: '0.65rem',
+                                background: 'rgba(239, 68, 68, 0.15)',
+                                borderColor: 'rgba(239, 68, 68, 0.3)',
+                                color: 'var(--red)'
+                              }}
+                              onClick={() => onClosePosition(t.id)}
+                            >
+                              ✕ Close
+                            </button>
+                          </td>
+                        </tr>
+                      );
+                    })
+                  )}
+                </tbody>
+              </table>
             </div>
           )}
 
