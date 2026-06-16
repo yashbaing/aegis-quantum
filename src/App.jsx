@@ -20,7 +20,8 @@ import {
   getClosedTrades,
   addClosedTrade,
   getSetting,
-  saveSetting
+  saveSetting,
+  clearAllData
 } from './utils/db';
 
 // ============================================================
@@ -1544,6 +1545,42 @@ export default function App() {
     setVeritasMetrics(prev => ({ ...prev, activeTrades: toKeep }));
   };
 
+  const handleResetDatabase = () => {
+    if (window.confirm("Are you sure you want to clear all trading data? This will wipe your historical closed log, running trades, saved signals, and reset capital back to $10,000.")) {
+      clearAllData().then(() => {
+        return saveSetting('capital', 10000);
+      }).then(() => {
+        setVeritasMetrics({
+          activeTrades: [],
+          closedTrades: [],
+          capital: 10000,
+          equityHistory: [0],
+          winRate: 0,
+          sharpeRatio: 0,
+          maxDrawdown: 0,
+          profitFactor: 0,
+          verdict: 'ACCUMULATING'
+        });
+        activeTradesRef.current = [];
+        setOpportunities([]);
+        showToast({
+          type: 'info',
+          icon: '🔄',
+          title: 'Database Reset',
+          msg: 'All local trades and signals wiped. Capital reset to $10,000.'
+        });
+      }).catch(err => {
+        console.error("Failed to reset database:", err);
+        showToast({
+          type: 'error',
+          icon: '❌',
+          title: 'Database Error',
+          msg: 'Failed to reset local database.'
+        });
+      });
+    }
+  };
+
   // Seed initial opportunities once assets are populated and DB is loaded
   useEffect(() => {
     if (!dbLoaded || Object.keys(assets).length === 0) return;
@@ -1707,7 +1744,12 @@ export default function App() {
       {/* WORKSPACE CONTENT GRID */}
       <main className="workspace">
         {activeView === 'portfolio' ? (
-          <PortfolioDashboard veritasMetrics={veritasMetrics} />
+          <PortfolioDashboard
+            veritasMetrics={veritasMetrics}
+            assets={assets}
+            onClosePosition={handleClosePosition}
+            onResetDatabase={handleResetDatabase}
+          />
         ) : (
           <>
             {/* ROW 1: Chart canvas + Analytical Agents Grid */}

@@ -152,3 +152,17 @@ export function saveSetting(key, value) {
     });
   });
 }
+
+export function clearAllData() {
+  return initDB().then((db) => {
+    return new Promise((resolve, reject) => {
+      const tx = db.transaction(['signals', 'activeTrades', 'closedTrades', 'settings'], 'readwrite');
+      tx.objectStore('signals').clear();
+      tx.objectStore('activeTrades').clear();
+      tx.objectStore('closedTrades').clear();
+      tx.objectStore('settings').clear();
+      tx.oncomplete = () => resolve();
+      tx.onerror = () => reject(tx.error);
+    });
+  });
+}

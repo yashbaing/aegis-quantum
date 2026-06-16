@@ -1,6 +1,11 @@
 import { useRef, useEffect, useState, useMemo } from 'react';
 
-export default function PortfolioDashboard({ veritasMetrics }) {
+export default function PortfolioDashboard({
+  veritasMetrics,
+  assets = {},
+  onClosePosition,
+  onResetDatabase
+}) {
   const chartCanvasRef = useRef(null);
   const [chartMode, setChartMode] = useState('usd'); // 'usd' or 'pct'
   const [filterAssetType, setFilterAssetType] = useState('all');
@@ -207,20 +212,44 @@ export default function PortfolioDashboard({ veritasMetrics }) {
           </span>
         </div>
         
-        {/* Toggles for charts */}
-        <div style={{ display: 'flex', gap: '0.4rem' }}>
+        {/* Toggles for charts & database reset */}
+        <div style={{ display: 'flex', gap: '0.6rem', alignItems: 'center' }}>
           <button
-            className={`pill-btn ${chartMode === 'usd' ? 'active' : ''}`}
-            onClick={() => setChartMode('usd')}
+            className="pill-btn"
+            style={{
+              padding: '0.35rem 0.75rem',
+              fontSize: '0.72rem',
+              background: 'rgba(239,68,68,0.12)',
+              color: 'var(--red)',
+              border: '1px solid rgba(239,68,68,0.35)',
+              borderRadius: '6px',
+              cursor: 'pointer',
+              fontWeight: 700,
+              display: 'flex',
+              alignItems: 'center',
+              gap: '4px'
+            }}
+            onClick={onResetDatabase}
           >
-            PnL ($ USD)
+            🔄 Reset Database
           </button>
-          <button
-            className={`pill-btn ${chartMode === 'pct' ? 'active' : ''}`}
-            onClick={() => setChartMode('pct')}
-          >
-            PnL (% ROI)
-          </button>
+          
+          <div className="vr" style={{ height: '20px', background: 'var(--border-1)', width: '1px' }} />
+          
+          <div style={{ display: 'flex', gap: '0.4rem' }}>
+            <button
+              className={`pill-btn ${chartMode === 'usd' ? 'active' : ''}`}
+              onClick={() => setChartMode('usd')}
+            >
+              PnL ($ USD)
+            </button>
+            <button
+              className={`pill-btn ${chartMode === 'pct' ? 'active' : ''}`}
+              onClick={() => setChartMode('pct')}
+            >
+              PnL (% ROI)
+            </button>
+          </div>
         </div>
       </div>
 
@@ -380,6 +409,107 @@ export default function PortfolioDashboard({ veritasMetrics }) {
               </div>
             </div>
           </div>
+        </div>
+      </div>
+
+      {/* ACTIVE POSITIONS SECTION */}
+      <div className="card accent-amber card-glow-amber">
+        <div className="card-header">
+          <div className="card-title">
+            <div className="card-title-icon" style={{ background: 'rgba(245,158,11,0.12)', color: 'var(--amber)' }}>⚡</div>
+            Active Running Positions
+          </div>
+          <div className="card-actions">
+            <span className="text-muted" style={{ fontSize: '0.68rem' }}>
+              Open Trades: <strong style={{ color: 'var(--amber)' }}>{activeTrades.length}</strong>
+            </span>
+          </div>
+        </div>
+        <div className="card-body" style={{ maxHeight: '220px', overflowY: 'auto' }}>
+          <table className="opp-table" style={{ fontSize: '0.7rem' }}>
+            <thead>
+              <tr>
+                <th>Opened</th>
+                <th>Asset</th>
+                <th>Action</th>
+                <th>Entry Price</th>
+                <th>Live Price</th>
+                <th>Target Price</th>
+                <th>Stop Price</th>
+                <th>Live Return ($)</th>
+                <th>Live ROI (%)</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody>
+              {activeTrades.length === 0 ? (
+                <tr>
+                  <td colSpan={10} style={{ textAlign: 'center', color: 'var(--text-muted)', padding: '2rem' }}>
+                    No active positions currently running. Open a position from the Trade Desk to monitor it here.
+                  </td>
+                </tr>
+              ) : (
+                [...activeTrades].reverse().map((t, idx) => {
+                  const currentPrice = assets[t.asset] ? assets[t.asset].currentPrice : t.entry;
+                  const isBuy = t.action === 'BUY';
+                  const pnlPct = isBuy ? (currentPrice - t.entry) / t.entry : (t.entry - currentPrice) / t.entry;
+                  const pnlUSD = pnlPct * 10000;
+                  
+                  return (
+                    <tr key={t.id || idx}>
+                      <td className="text-muted text-mono">{t.openTime}</td>
+                      <td>
+                        <span style={{ fontWeight: 700, color: 'var(--cyan)' }}>
+                          {t.asset === 'USDC/WETH' ? 'WETH/USDC' : t.asset}
+                        </span>
+                      </td>
+                      <td>
+                        <span className={`action-badge ${t.action === 'BUY' ? 'ab-buy' : 'ab-sell'}`}>
+                          {t.action}
+                        </span>
+                      </td>
+                      <td className="text-mono">
+                        ${t.entry.toLocaleString(undefined, { minimumFractionDigits: t.dec })}
+                      </td>
+                      <td className="text-mono" style={{ color: 'var(--amber)' }}>
+                        ${currentPrice.toLocaleString(undefined, { minimumFractionDigits: t.dec })}
+                      </td>
+                      <td className="text-mono text-emerald">
+                        ${t.target.toLocaleString(undefined, { minimumFractionDigits: t.dec })}
+                      </td>
+                      <td className="text-mono text-red">
+                        ${t.stop.toLocaleString(undefined, { minimumFractionDigits: t.dec })}
+                      </td>
+                      <td style={{ fontWeight: 700 }} className={`text-mono ${pnlUSD >= 0 ? 'price-up' : 'price-down'}`}>
+                        {pnlUSD >= 0 ? '+' : ''}${pnlUSD.toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                      </td>
+                      <td style={{ fontWeight: 700 }} className={`text-mono ${pnlPct >= 0 ? 'price-up' : 'price-down'}`}>
+                        {(pnlPct >= 0 ? '+' : '') + (pnlPct * 100).toFixed(2)}%
+                      </td>
+                      <td>
+                        <button
+                          className="pill-btn"
+                          style={{
+                            padding: '0.1rem 0.4rem',
+                            fontSize: '0.62rem',
+                            background: 'rgba(244,63,94,0.15)',
+                            color: 'var(--red)',
+                            border: '1px solid rgba(244,63,94,0.3)',
+                            borderRadius: '4px',
+                            cursor: 'pointer',
+                            fontWeight: 700
+                          }}
+                          onClick={() => onClosePosition(t.id)}
+                        >
+                          ✕ Close
+                        </button>
+                      </td>
+                    </tr>
+                  );
+                })
+              )}
+            </tbody>
+          </table>
         </div>
       </div>
 
