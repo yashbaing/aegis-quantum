@@ -397,6 +397,15 @@ export default function App() {
   const [dbLoaded, setDbLoaded] = useState(false);
   const [activeView, setActiveView] = useState('desk');
 
+  // Signal quota tracking — rolling 60-minute window, max 10 signals/hour
+  const [signalQuota, setSignalQuota] = useState({ used: 0, resetAt: Date.now() + 3600000 });
+  const signalCountRef = useRef(0);
+  const signalWindowStartRef = useRef(Date.now());
+
+  // Backtest state
+  const [backtestRunning, setBacktestRunning] = useState(false);
+  const [backtestResults, setBacktestResults] = useState(null);
+
   const wsRef = useRef(null);
   const binanceRetries = useRef(0);
   // Refs for real-time trade evaluation (avoids stale closures in WS/timer callbacks)
@@ -1314,6 +1323,158 @@ export default function App() {
   }, [activeAsset, agentsRunning]);
 
   // ------------------------------------------------------------
+  // LIVE BACKTESTING ENGINE
+  // ------------------------------------------------------------
+  const runBacktest = async (assetKey, days, strategy) => {
+    const binSym = ASSET_TO_BINANCE[assetKey];
+    if (!binSym) return;
+
+    setBacktestRunning(true);
+    setBacktestResults(null);
+
+    // Strategy config: conservative / standard / aggressive
+    const strategyConfig = {
+      conservative: { confThreshold: 80, targetPct: 0.055, stopPct: 0.018, riskPct: 0.01 },
+      standard:     { confThreshold: 74, targetPct: 0.07,  stopPct: 0.025, riskPct: 0.02 },
+      aggressive:   { confThreshold: 68, targetPct: 0.09,  stopPct: 0.032, riskPct: 0.03 },
+    };
+    const cfg = strategyConfig[strategy] || strategyConfig.standard;
+
+    // Map days → Binance interval/limit
+    const intervalMap = { 7: { interval: '1h', limit: 168 }, 30: { interval: '4h', limit: 180 }, 90: { interval: '4h', limit: 540 } };
+    const { interval, limit } = intervalMap[days] || intervalMap[30];
+
+    try {
+      const res = await fetch(`https://api.binance.com/api/v3/klines?symbol=${binSym}&interval=${interval}&limit=${limit}`);
+      if (!res.ok) throw new Error('Binance fetch failed');
+      const raw = await res.json();
+
+      const bars = raw.map(k => ({
+        time: new Date(k[0]),
+        open: parseFloat(k[1]),
+        high: parseFloat(k[2]),
+        low: parseFloat(k[3]),
+        close: parseFloat(k[4]),
+        vol: parseFloat(k[5])
+      }));
+
+      // Replay signal logic against historical bars
+      let capital = 10000;
+      let peak = 10000;
+      let maxDD = 0;
+      const equityHistory = [0];
+      const trades = [];
+      let consecutiveWins = 0, consecutiveLosses = 0;
+      let maxConsecWins = 0, maxConsecLosses = 0;
+      let currentConsecWins = 0, currentConsecLosses = 0;
+
+      // Simple signal replay: every N bars attempt a signal based on RSI+MACD
+      const SIGNAL_EVERY = Math.max(4, Math.floor(bars.length / 20)); // ~20 trades max
+
+      for (let i = 30; i < bars.length - 4; i += SIGNAL_EVERY) {
+        const slice = bars.slice(Math.max(0, i - 29), i + 1);
+        if (slice.length < 20) continue;
+
+        // Compute RSI
+        const rsiArr = calcRSI(slice, 14);
+        const lastRsi = rsiArr[rsiArr.length - 1] || 50;
+        // Compute MACD
+        const macd = calcMACD(slice);
+        const macdDiff = (macd.line[macd.line.length - 1] || 0) - (macd.signal[macd.signal.length - 1] || 0);
+
+        // Determine signal direction
+        const isBuy = lastRsi < 55 && macdDiff > 0 || lastRsi < 35;
+        const isSell = lastRsi > 65 && macdDiff < 0;
+        if (!isBuy && !isSell) continue;
+
+        const action = isBuy ? 'BUY' : 'SELL';
+        const entry = slice[slice.length - 1].close;
+        const conf = Math.round(cfg.confThreshold + Math.random() * (96 - cfg.confThreshold));
+        if (conf < cfg.confThreshold) continue;
+
+        const target = action === 'BUY' ? entry * (1 + cfg.targetPct) : entry * (1 - cfg.targetPct);
+        const stop   = action === 'BUY' ? entry * (1 - cfg.stopPct)  : entry * (1 + cfg.stopPct);
+        const positionRisk = capital * cfg.riskPct;
+
+        // Simulate outcome over next bars
+        let resolved = false;
+        let status = 'LOSS';
+        let exitPrice = stop;
+
+        for (let j = i + 1; j < Math.min(i + SIGNAL_EVERY, bars.length); j++) {
+          const bar = bars[j];
+          if (action === 'BUY') {
+            if (bar.high >= target)  { resolved = true; status = 'WIN';  exitPrice = target; break; }
+            if (bar.low  <= stop)    { resolved = true; status = 'LOSS'; exitPrice = stop;   break; }
+          } else {
+            if (bar.low  <= target)  { resolved = true; status = 'WIN';  exitPrice = target; break; }
+            if (bar.high >= stop)    { resolved = true; status = 'LOSS'; exitPrice = stop;   break; }
+          }
+        }
+        if (!resolved) { exitPrice = bars[Math.min(i + SIGNAL_EVERY, bars.length - 1)].close; }
+
+        const pnlPct = action === 'BUY'
+          ? (exitPrice - entry) / entry
+          : (entry - exitPrice) / entry;
+        const pnlUSD = positionRisk * (pnlPct / cfg.stopPct) * Math.sign(pnlPct);
+
+        capital += pnlUSD;
+        if (capital > peak) peak = capital;
+        const dd = ((peak - capital) / peak) * 100;
+        if (dd > maxDD) maxDD = dd;
+        equityHistory.push(((capital - 10000) / 10000) * 100);
+
+        if (status === 'WIN') {
+          currentConsecWins++; currentConsecLosses = 0;
+          if (currentConsecWins > maxConsecWins) maxConsecWins = currentConsecWins;
+        } else {
+          currentConsecLosses++; currentConsecWins = 0;
+          if (currentConsecLosses > maxConsecLosses) maxConsecLosses = currentConsecLosses;
+        }
+
+        trades.push({ action, entry, exitPrice, status, pnlPct, pnlUSD, time: slice[slice.length - 1].time });
+      }
+
+      const wins = trades.filter(t => t.status === 'WIN');
+      const losses = trades.filter(t => t.status === 'LOSS');
+      const winRate = trades.length > 0 ? (wins.length / trades.length) * 100 : 0;
+      const avgWin = wins.length > 0 ? wins.reduce((s, t) => s + t.pnlPct, 0) / wins.length : 0;
+      const avgLoss = losses.length > 0 ? Math.abs(losses.reduce((s, t) => s + t.pnlPct, 0) / losses.length) : 0;
+      const expectancy = (winRate / 100) * avgWin - ((100 - winRate) / 100) * avgLoss;
+
+      const rets = trades.map(t => t.pnlPct);
+      const meanRet = rets.length ? rets.reduce((a, b) => a + b, 0) / rets.length : 0;
+      const variance = rets.reduce((a, b) => a + (b - meanRet) ** 2, 0) / (rets.length || 1);
+      const stdDev = Math.sqrt(variance);
+      const sharpeRatio = stdDev === 0 ? 0 : (meanRet / stdDev) * Math.sqrt(252);
+
+      // Sortino — downside deviation only
+      const downsideRets = rets.filter(r => r < 0);
+      const downsideVariance = downsideRets.reduce((a, b) => a + b * b, 0) / (downsideRets.length || 1);
+      const sortino = Math.sqrt(downsideVariance) === 0 ? 0 : (meanRet / Math.sqrt(downsideVariance)) * Math.sqrt(252);
+
+      const totalReturn = ((capital - 10000) / 10000) * 100;
+      const recoveryFactor = maxDD > 0 ? Math.abs(totalReturn / maxDD) : 0;
+      const grossProfit = wins.reduce((s, t) => s + t.pnlUSD, 0);
+      const grossLoss = Math.abs(losses.reduce((s, t) => s + t.pnlUSD, 0));
+      const profitFactor = grossLoss > 0 ? grossProfit / grossLoss : grossProfit > 0 ? 9.99 : 0;
+
+      setBacktestResults({
+        asset: assetKey, days, strategy, totalTrades: trades.length,
+        winRate, totalReturn, finalCapital: capital, maxDrawdown: maxDD,
+        sharpeRatio, sortino, profitFactor, expectancy: expectancy * 100,
+        recoveryFactor, maxConsecWins, maxConsecLosses,
+        equityHistory, trades
+      });
+    } catch (e) {
+      console.warn('Backtest failed:', e.message);
+      setBacktestResults({ error: 'Failed to fetch historical data. Check your connection.' });
+    } finally {
+      setBacktestRunning(false);
+    }
+  };
+
+  // ------------------------------------------------------------
   // OPPORTUNITIES SIGNAL GENERATION
   // ------------------------------------------------------------
   const generateAlphaSignal = (customSymbol = null, forceAction = null, registerTrade = true) => {
@@ -1346,16 +1507,39 @@ export default function App() {
       const asset = prevAssets[symbol];
       if (!asset) return prevAssets;
 
-      const isBuy = forceAction ? forceAction === 'BUY' : Math.random() > 0.42;
+      // ── QUALITY GATE ─────────────────────────────────────────
+      // Only emit if RSI is in a meaningful zone AND MACD confirms direction
+      let qualityPass = !!customSymbol; // manual/seed always passes
+      let forcedAction = forceAction;
+
+      if (!qualityPass && asset.history && asset.history.length >= 26) {
+        const rsiArr = calcRSI(asset.history, 14);
+        const lastRsi = rsiArr[rsiArr.length - 1];
+        const macd = calcMACD(asset.history);
+        const macdDiff = (macd.line[macd.line.length - 1] || 0) - (macd.signal[macd.signal.length - 1] || 0);
+
+        const buySignal  = lastRsi != null && lastRsi < 58 && macdDiff > 0;
+        const sellSignal = lastRsi != null && lastRsi > 52 && macdDiff < 0;
+
+        if (buySignal)  { qualityPass = true; forcedAction = 'BUY'; }
+        if (sellSignal) { qualityPass = true; forcedAction = 'SELL'; }
+      }
+
+      if (!qualityPass) return prevAssets; // skip — no technical confirmation
+
+      const isBuy = forcedAction ? forcedAction === 'BUY' : Math.random() > 0.42;
       const action = isBuy ? 'BUY' : 'SELL';
       const entry = asset.currentPrice;
       const target = isBuy ? entry * (1 + 0.065 + Math.random() * 0.04) : entry * (1 - 0.055 - Math.random() * 0.03);
       const stop = isBuy ? entry * (1 - 0.025 - Math.random() * 0.01) : entry * (1 + 0.025 + Math.random() * 0.01);
-      const conf = Math.round(68 + Math.random() * 28);
+      const conf = Math.round(75 + Math.random() * 21); // min 75% confidence
       
       const reasons = isBuy ? REASONS_BUY : REASONS_SELL;
       const reason = reasons[Math.floor(Math.random() * reasons.length)];
       const rr = Math.abs(target - entry) / Math.abs(stop - entry);
+
+      // Require minimum R:R of 1.8 for a quality signal
+      if (!customSymbol && rr < 1.8) return prevAssets;
 
       const ts = new Date().toLocaleTimeString([], { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 
@@ -1435,9 +1619,9 @@ export default function App() {
       // Trigger Toast notification
       showToast({
         type: isBuy ? 'alpha' : 'warning',
-        icon: isBuy ? '🎯' : '⚠️',
-        title: `${action} Signal — ${asset.symbol}`,
-        msg: `${conf}% conf · Target $${target.toFixed(asset.dec)} · R/R 1:${rr.toFixed(1)}`
+        icon: isBuy ? '📈' : '📉',
+        title: `${isBuy ? 'Long Setup' : 'Short Setup'}: ${asset.symbol}`,
+        msg: `${conf}% confidence · R/R 1:${rr.toFixed(1)} · Manage risk carefully`
       });
 
       return prevAssets;
@@ -1591,13 +1775,32 @@ export default function App() {
     }
   }, [Object.keys(assets).length > 0, dbLoaded]);
 
-  // Interval for signal generation — every 8s for faster real-time results
+  // ── SIGNAL RATE LIMITER — max 10 high-quality signals per hour ─────────────
+  // Interval fires every 45s; quota check prevents > 10 emissions per 60min window
   useEffect(() => {
     const signalTimer = setInterval(() => {
-      if (agentsRunning && Math.random() < 0.8) {
+      if (!agentsRunning) return;
+
+      const now = Date.now();
+      const windowMs = 60 * 60 * 1000; // 60-minute rolling window
+
+      // Reset counter if window has elapsed
+      if (now - signalWindowStartRef.current >= windowMs) {
+        signalWindowStartRef.current = now;
+        signalCountRef.current = 0;
+        setSignalQuota({ used: 0, resetAt: now + windowMs });
+      }
+
+      // Enforce 10/hour cap
+      if (signalCountRef.current >= 10) return;
+
+      // Probabilistic gate — don't always generate on every tick
+      if (Math.random() < 0.65) {
+        signalCountRef.current++;
+        setSignalQuota(q => ({ ...q, used: signalCountRef.current }));
         generateAlphaSignal();
       }
-    }, 8000);
+    }, 45000); // 45-second interval
 
     return () => clearInterval(signalTimer);
   }, [agentsRunning, marketStatusInfo.status]);
@@ -1749,6 +1952,9 @@ export default function App() {
             assets={assets}
             onClosePosition={handleClosePosition}
             onResetDatabase={handleResetDatabase}
+            onRunBacktest={runBacktest}
+            backtestRunning={backtestRunning}
+            backtestResults={backtestResults}
           />
         ) : (
           <>
@@ -1811,6 +2017,7 @@ export default function App() {
             assets={assets}
             onPlaceTrade={handlePlaceTrade}
             onClosePosition={handleClosePosition}
+            signalQuota={signalQuota}
           />
         </div>
 

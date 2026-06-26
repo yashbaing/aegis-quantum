@@ -13,7 +13,8 @@ export default function OpportunityTerminal({
   onOpenTelegramModal,
   assets,
   onPlaceTrade,
-  onClosePosition
+  onClosePosition,
+  signalQuota = { used: 0, resetAt: 0 }
 }) {
   const equityCanvasRef = useRef(null);
   const [dimensions, setDimensions] = useState({ w: 0, h: 180 });
@@ -215,16 +216,16 @@ export default function OpportunityTerminal({
             }}
             onClick={() => onChangeAlphaTab('signals')}
           >
-            <div className="card-title-icon" style={{ background: 'var(--emerald-dim)', color: 'var(--emerald)' }}>🎯</div>
-            Alpha Signals
+            <div className="card-title-icon" style={{ background: 'rgba(16,185,129,0.1)', color: 'var(--emerald)' }}>📶</div>
+            Signal Queue
             <span style={{
               fontSize: '0.62rem',
               fontWeight: 700,
               padding: '0.1rem 0.4rem',
-              borderRadius: 'var(--r-pill)',
-              background: 'var(--emerald-dim)',
+              borderRadius: 'var(--r-sm)',
+              background: 'rgba(16,185,129,0.08)',
               color: 'var(--emerald)',
-              border: '1px solid rgba(16,185,129,0.25)',
+              border: '1px solid rgba(16,185,129,0.18)',
               marginLeft: '0.25rem'
             }}>
               {opportunities.length}
@@ -307,6 +308,20 @@ export default function OpportunityTerminal({
           )}
         </div>
       </div>
+
+      {/* Signal Quota Bar */}
+      {isSignals && (
+        <div className="signal-quota-bar">
+          <span className="sq-label">Signals / hr</span>
+          <div className="sq-track">
+            <div
+              className={`sq-fill${signalQuota.used >= 9 ? ' sq-saturated' : ''}`}
+              style={{ width: `${Math.min(100, (signalQuota.used / 10) * 100)}%` }}
+            />
+          </div>
+          <span className="sq-count">{signalQuota.used} / 10</span>
+        </div>
+      )}
 
       {/* Market Closed Warning Notice Banner */}
       {isSignals && !marketOpen && (
@@ -404,12 +419,11 @@ export default function OpportunityTerminal({
                       </td>
                       <td>
                         <button
-                          className="pill-btn active"
+                          className="pill-btn"
                           style={{
-                            padding: '0.2rem 0.45rem',
+                            padding: '0.2rem 0.55rem',
                             fontSize: '0.65rem',
-                            background: 'var(--cyan-dim)',
-                            borderColor: 'rgba(6,182,212,0.3)',
+                            borderColor: 'rgba(6,182,212,0.25)',
                             color: 'var(--cyan)',
                             display: 'flex',
                             alignItems: 'center',
@@ -417,7 +431,7 @@ export default function OpportunityTerminal({
                           }}
                           onClick={() => onPlaceTrade(o.asset, o.action)}
                         >
-                          ⚡ Trade
+                          + Simulate
                         </button>
                       </td>
                     </tr>

@@ -47,7 +47,7 @@ export default function Sidebar({
         <div className="logo-orb">Ω</div>
         <div className="logo-copy">
           <span className="logo-name">Aegis Quantum</span>
-          <span className="logo-tagline">AI Market Intelligence · v3.0</span>
+          <span className="logo-tagline">AI Signal Intelligence · v4.0</span>
         </div>
       </div>
 
